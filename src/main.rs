@@ -1,124 +1,103 @@
-#![allow(non_snake_case)]
+// #![allow(non_snake_case)]
+// #![allow(dead_code)]
+// #![allow(unused_variables)]
 
-use std::{fs};
 
-fn CreateArr3D(SizeX: u32, SizeY: u32) -> Vec<Vec<Vec<f64>>> {
-    // Creates 3D Array of size "SizeX" & "SizeY"
-    // Full of Mathematical Values
-    
-    fn GetMathVal(Value: u32, MaxRef: u32) -> f64 {
+/*
+Author : @Some1and2
+  Date : 6/21/2023
+
+Main file for running processes
+*/
+
+// use std::{fs};
+mod math;
+
+use image::{ImageBuffer, Rgb};
+
+const SIZE_X: &'static usize = &5;
+const SIZE_Y: &'static usize = &5;
+const MAX_I : &'static u32 = &1024;
+
+fn set_initial_values(state: &mut [[math::Complex; *SIZE_X]; *SIZE_Y]) {
+    /* 
+    Function sets initial values for the array. 
+    Sets each value to be coordinates of mathematical space
+    */
+
+    fn get_math_value(value: usize, max_ref: usize) -> f64 {
         // Function for getting a mathematical space
         // Value from "Value"
-        4f64 * (Value as f64) / (MaxRef as f64 - 1f64) - 2f64
-    }    
-
-    // Sets Up Itterator
-    (0..SizeY)
-        // Maps all the SizeY Values to SizeX Vectors of Imaginary & Real Values
-        .map(|y| (0..SizeY)
-            // Maps All the X Values to Imaginary and Real Values
-            .map(|x| vec![GetMathVal(x, SizeX), GetMathVal(y, SizeY)])
-            .collect::<Vec<Vec<f64>>>()
-        ).collect::<Vec<Vec<Vec<f64>>>>()
-
-}
-
-fn CreateArr2D(SizeX: u32, SizeY: u32) -> Vec<Vec<u32>>{
-    // Creates 2D Array of size "SizeX" & "SizeY"
-    // Full of 0's
-
-    // Sets Up Itterator
-    (0..SizeY)
-    // Maps all the SizeY Values to SizeX Vectors
-        .map(|_y|
-            // Maps All the X Values to 0's
-            (0..SizeX)
-            .map(|_x| 0)
-            .collect::<Vec<u32>>()
-        ).collect::<Vec<Vec<u32>>>()
-}
-
-fn FindMandelbrotValues(Values: Vec<Vec<Vec<f64>>>, MaxI: u32) -> Vec<Vec<u32>> {
-    // Function for getting the mandelbrot values from vectors
-    
-    let mut OutValues = CreateArr2D(Values.len() as u32, Values[0].len() as u32);
-    let mut ci: f64;
-    let mut cj: f64;
-    let mut zi: f64;
-    let mut zj: f64;
-
-    let ImageY = Values.len();
-
-    for y in 0..Values.len() {
-        for x in 0..Values[0].len() {
-
-            // Splits Values into real and imaginary parts
-            (cj, ci) = (Values[y][x][0], Values[y][x][1]);
-            (zj, zi) = (cj, ci);
-
-            for _Itter in 0..MaxI {
-                
-                let distance = f64::powf(zi, 2.) * f64::powf(zj, 2.);
-
-                if distance > 4f64 {
-                    break
-                }
-
-                OutValues[y][x] += 1;
-
-                let New_zi = 2. * zi * zj + ci;
-                zj = f64::powf(zj, 2.) - f64::powf(zi, 2.) + cj;
-                zi = New_zi;
-
-            }
-        }
-        print!("\t{} / {} | {}%\r", y + 1, ImageY, 100. * ((y + 1) as f64 / ImageY as f64) );
+        4f64 * (value as f64) / (max_ref as f64 - 1f64) - 2f64
     }
 
-    println!();
-    
-    OutValues
+    // Itterates through all values and sets real / imaginary values to be coordinates in mathematical space
+    for i in 0..*SIZE_Y {
+        for j in 0..*SIZE_X {
+            state[i][j] = math::Complex {
+                real : get_math_value(j, *SIZE_X),
+                imaginary : get_math_value(i, *SIZE_Y),
+            }
+        }
+    }
 }
 
-fn GenerateMandelbrot(SizeX: u32, SizeY: u32, MaxI: u32) -> Vec<Vec<u32>> {
-    // Function for Generating the Mandelbrot Set
+fn eval_function(state: &mut [[math::Complex; *SIZE_X]; *SIZE_Y]) -> [[u32; *SIZE_X]; *SIZE_Y] {
+    /*
+        Function for getting the value of each point
+    */
 
-    println!("Creating Array");
-    let Values = CreateArr3D(SizeX, SizeY);
+    let mut out_values = [[0u32; *SIZE_X]; *SIZE_Y];
 
-    println!("Generating Image");
-    FindMandelbrotValues(Values, MaxI)
+    for i in 0..*SIZE_Y {
+        for j in 0..*SIZE_X {
+            let mut z = state[i][j];
+            let c = z.clone();
+            for iteration in 0..*MAX_I {
+                z = z * z + c;
+                if z.is_greater(2f64) {
+                    out_values[i][j] = iteration;
+                    break
+                }
+                if iteration == *MAX_I - 1 {
+                    out_values[i][j] = *MAX_I;
+                }
+            }
+        }
+    }
+    out_values
 }
-
-
 
 fn main() {
+    // Main function of the program
 
-    // Sets the dimensions of the Image
-    let SizeX = 84;
-    let SizeY = 84;
+    // Ensures User wants to continue
+    {
+        // Answer check to make sure the its equals to "y"
+        println!("Are you sure you want to continue with the size {} x {} [ y | n ]?", SIZE_X, SIZE_Y);
+        let mut v: String = String::default();
+        let _ = std::io::stdin().read_line(&mut v).unwrap();
 
-    // Setsup answer string
-    let mut v = String::new();
+        assert_eq!(v
+            .to_lowercase()
+            .chars()
+            .nth(0)
+            .unwrap()
+            , 'y');
+    }
 
-    println!("Are you sure you want to continue with the size {} x {} [ y | n ]?", SizeX, SizeY);
-    let _ = std::io::stdin().read_line(&mut v).unwrap();
-    assert_eq!(v.to_lowercase().chars().nth(0).unwrap(), 'y');
+    // Configures state
+    let mut state = [ [math::Complex { real : 0f64, imaginary : 0f64 }; *SIZE_X]; *SIZE_Y ];
+    set_initial_values(&mut state);
+    let out_values = eval_function(&mut state);
 
-    println!("Started!");
+    for i in out_values.iter() {
+        println!("{i:?}")
+    }
 
-    // Generates Mandelbrot shape in type Vec<Vec<u32>>
-    let Image = GenerateMandelbrot(SizeX, SizeY, 1000);
-    
-    // Uses the format!() macro
-    println!("Converting Image to String");
-    let ImageString: String = format!("{:?}", Image);
-
-    // Writes to file
-    println!("Writing to File");
-    let _ = fs::write("Outvalues.kyros", &ImageString);
-
-    println!("FINISHED!");
-    let _ = std::io::stdin().read_line(&mut String::new());
+    // Show Completion Message
+    {
+        println!("FINISHED!");
+        let _ = std::io::stdin().read_line(&mut String::new());
+    }
 }
-
