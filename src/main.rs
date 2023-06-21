@@ -13,10 +13,10 @@ Main file for running processes
 // use std::{fs};
 mod math;
 
-use image::{ImageBuffer, Rgb};
+extern crate image;
 
-const SIZE_X: &'static usize = &5;
-const SIZE_Y: &'static usize = &5;
+const SIZE_X: &'static usize = &255;
+const SIZE_Y: &'static usize = &255;
 const MAX_I : &'static u32 = &1024;
 
 fn set_initial_values(state: &mut [[math::Complex; *SIZE_X]; *SIZE_Y]) {
@@ -49,10 +49,15 @@ fn eval_function(state: &mut [[math::Complex; *SIZE_X]; *SIZE_Y]) -> [[u32; *SIZ
 
     let mut out_values = [[0u32; *SIZE_X]; *SIZE_Y];
 
+    // Goes through each pixel
     for i in 0..*SIZE_Y {
         for j in 0..*SIZE_X {
+
+            // Sets Variables
             let mut z = state[i][j];
             let c = z.clone();
+
+            // Does Math
             for iteration in 0..*MAX_I {
                 z = z * z + c;
                 if z.is_greater(2f64) {
@@ -66,6 +71,30 @@ fn eval_function(state: &mut [[math::Complex; *SIZE_X]; *SIZE_Y]) -> [[u32; *SIZ
         }
     }
     out_values
+}
+
+fn save_image(state: &mut [[u32; *SIZE_X]; *SIZE_Y]) {
+    /* 
+        Function that saves the 2D list of numbers as an image. 
+    */
+
+    let mut img = image::ImageBuffer::new(*SIZE_X as u32, *SIZE_Y as u32);
+    for (x, y, pixel) in img.enumerate_pixels_mut() {
+        let r = (0.2 * x as f32) as u8;
+        let b = (0.2 * y as f32) as u8;
+        *pixel = image::Rgb([r, 0, b]);
+    }
+    for i in 0..*SIZE_Y {
+        for j in 0..*SIZE_X {
+            let pixel = img.get_pixel_mut(j as u32, i as u32);
+            let image::Rgb(data) = *pixel;
+            let n = (255 * state[i][j] / *MAX_I) as u8;
+            *pixel = image::Rgb([data[0], n, data[2]]);
+        }
+    }
+
+    img.save("out.png").unwrap();
+
 }
 
 fn main() {
@@ -89,11 +118,9 @@ fn main() {
     // Configures state
     let mut state = [ [math::Complex { real : 0f64, imaginary : 0f64 }; *SIZE_X]; *SIZE_Y ];
     set_initial_values(&mut state);
-    let out_values = eval_function(&mut state);
+    let mut out_values = eval_function(&mut state);
 
-    for i in out_values.iter() {
-        println!("{i:?}")
-    }
+    save_image(&mut out_values);
 
     // Show Completion Message
     {
