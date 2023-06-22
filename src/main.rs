@@ -10,12 +10,13 @@ Author : @Some1and2
 Main file for running processes
 */
 
-// use std::{fs};
 mod math;
 
 extern crate image;
-use std::time::{SystemTime, UNIX_EPOCH};
 
+// extern crate color_space;
+use hsv;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn get_math_value(value: u32, max_ref: u32) -> f64 {
     // Function for getting the mathematical space
@@ -39,38 +40,47 @@ fn eval_function(size_x: u32, size_y: u32, max_i: u32) {
 
         // Gets Mandelbrot Value
         for iteration in 0..max_i {
-            z = z * z + c;
             if z.is_greater(2f64) {
                 return iteration;
             }
+            z = z * z + c;
         }
         return max_i;
     }
 
     // Sets Image Values
     let mut img = image::ImageBuffer::new(size_x, size_y);
-    for (x, y, pixel) in img.enumerate_pixels_mut() {
-        let r = (0.2 * x as f32) as u8;
-        let b = (0.2 * y as f32) as u8;
-        *pixel = image::Rgb([r, 0, b]);
+    for (_x, _y, pixel) in img.enumerate_pixels_mut() {
+        *pixel = image::Rgb([255, 255, 255]);
     }
 
     // Goes through each pixel
     for i in 0..size_y {
         for j in 0..size_x {
 
-            // Sets Initial Value
-            let z = math::Complex{ real : get_math_value(j, size_x), imaginary : get_math_value(i, size_y), };
-            // Gets output of z value
-            let z_output = get_point_value( z, max_i );
-            let pixel = img.get_pixel_mut(j as u32, i as u32);
-            let image::Rgb(data) = *pixel;
-            let n = (255 * z_output / max_i) as u8;
-            *pixel = image::Rgb([data[0], n, data[2]]);
+            let z = math::Complex{ real : get_math_value(j, size_x), imaginary : get_math_value(i, size_y), }; // Sets Initial Value
+            let z_output = get_point_value( z, max_i ); // Gets output of z value
+            let pixel = img.get_pixel_mut(j, i); // gets pixel reference for img[i][j]
+
+            // Gets color value
+            let out_rgb: (u8, u8, u8);
+
+            if z_output == 0 {out_rgb = (255, 255, 255)}
+            else if z_output == max_i {out_rgb = (0, 0, 0)}
+            else {
+                out_rgb = hsv::hsv_to_rgb(
+                    ( 360f64 * 9f64 * z_output as f64 / max_i as f64 ) % 360f64,
+                    1f64,
+                    1f64,
+                    );
+                };
+
+            *pixel = image::Rgb([out_rgb.0, out_rgb.1, out_rgb.2]);
         }
         print!("\t {:.2}% | {} / {}\r", 100f64*(i as f64 + 1f64) / size_y as f64, i+1, size_y);
     }
     println!();
+    println!("Saving File!");
     img.save("out.png").unwrap();
 }
 
@@ -79,8 +89,9 @@ fn main() {
     // Main function of the program
 
     // Defines Initial Values
-    let size_x = 2048u32;
-    let size_y = 2048u32;
+
+    let size_x = 8192u32;
+    let size_y = 8192u32;
     let max_i = 1024u32;
 
     // Ensures User wants to continue
@@ -101,7 +112,7 @@ fn main() {
     let start_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_secs();
+        .as_secs_f64();
 
     // Configures state
     eval_function(size_x, size_y, max_i);
@@ -109,7 +120,7 @@ fn main() {
     let end_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_secs();
+        .as_secs_f64();
 
     println!("[Finished in {:.1}s]", end_time as i64 - start_time as i64);
 

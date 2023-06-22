@@ -4,3 +4,4 @@ Cargo.*
 *.sublime-project
 *.sublimelinterrc
 *.sublime-workspace
+*.png
