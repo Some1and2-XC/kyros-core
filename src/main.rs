@@ -69,7 +69,7 @@ fn eval_function(size_x: u32, size_y: u32, max_i: u32) {
             else if z_output == max_i {out_rgb = (0, 0, 0)}
             else {
                 out_rgb = hsv::hsv_to_rgb(
-                    ( 360f64 * 9f64 * z_output as f64 / max_i as f64 ) % 360f64,
+                    ( 9f64 * z_output as f64 ) % 360f64,
                     1f64,
                     1f64,
                     );
@@ -90,9 +90,11 @@ fn main() {
 
     // Defines Initial Values
 
-    let size_x = 8192u32;
-    let size_y = 8192u32;
-    let max_i = 1024u32;
+    let size_x = 131_072u32;
+    let size_y = 131_072u32;
+    // let size_x = 1024u32;
+    // let size_y = 1024u32;
+    let max_i = 2048u32;
 
     // Ensures User wants to continue
     {

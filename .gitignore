@@ -1,6 +1,6 @@
 target/
 Output/
-Cargo.*
+Cargo.lock
 *.sublime-project
 *.sublimelinterrc
 *.sublime-workspace
