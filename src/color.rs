@@ -8,8 +8,8 @@ use hsv::hsv_to_rgb;
 let backgroud_color = [255, 255, 255];
 
 pub struct colorize {
-    
 }
 
-impl colorize {i
+impl colorize {
+    
 }
