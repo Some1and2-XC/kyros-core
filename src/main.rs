@@ -16,7 +16,16 @@ mod math;
 extern crate image;
 
 use hsv;
+use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::collections::HashMap;
+
+fn error_exit(error_msg: String) {
+    /*
+    Function for exiting the program early with an error message. 
+     */
+    print!("[Exit code : 0 | {:?}]", error_msg);
+}
 
 fn get_math_value(value: u32, max_ref: u32) -> f64 {
 	// Function for getting the mathematical space
@@ -24,10 +33,13 @@ fn get_math_value(value: u32, max_ref: u32) -> f64 {
 	4f64 * (value as f64) / (max_ref as f64 - 1f64) - 2f64
 }
 
-fn eval_function(size_x: u32, size_y: u32, max_i: u32, get_point_value: dyn math::formula::Generator) {
+fn eval_function(size_x: u32, size_y: u32, max_i: u64, generator_function: Box<&dyn math::formula::Generator>) {
 	/*
 	   Function for getting the value of each point
 	   */
+
+    // let get_point_value: dyn Fn(u32, math::structs::Complex, math::structs::Complex) = generator_function.to_owned();
+    let get_point_value: &dyn math::formula::Generator = *generator_function;
 
     // Sets Image Values
 	let mut img = image::ImageBuffer::new(size_x, size_y);
@@ -35,7 +47,7 @@ fn eval_function(size_x: u32, size_y: u32, max_i: u32, get_point_value: dyn math
 		*pixel = image::Rgb([255, 255, 255]);
 	}
 
-    let c = math::structs::Complex { real:0f64, imaginary: 0f64, };
+    let c = math::structs::Complex { real: 0f64, imaginary: 0f64, };
 
 	// Goes through each pixel
 	for i in 0..size_y {
@@ -46,14 +58,14 @@ fn eval_function(size_x: u32, size_y: u32, max_i: u32, get_point_value: dyn math
                 real : get_math_value(j, size_x),
                 imaginary : get_math_value(i, size_y),
             };
-            let z_output = get_point_value(max_i, c, z); // Gets output of z value
+            let z_output = get_point_value.formula(max_i, c, z); // Gets output of z value
 			let pixel = img.get_pixel_mut(j, i); // gets pixel reference for img[i][j]
 
 			// Gets color value
 			let out_rgb: (u8, u8, u8);
 
-			if z_output == 0 {out_rgb = (255, 255, 255)}
-			else if z_output == max_i {out_rgb = (0, 0, 0)}
+			if z_output == 0. {out_rgb = (255, 255, 255)}
+			else if z_output == max_i as f64 {out_rgb = (0, 0, 0)}
 			else {
 				out_rgb = hsv::hsv_to_rgb(
 					( 9f64 * z_output as f64 ) % 360f64,
@@ -81,12 +93,13 @@ fn main() {
 	// let size_y = 131_072u32;
 	let size_x = 1024u32;
 	let size_y = 1024u32;
-	let max_i = 2048u32;
+	let max_i = 2048u64;
 
 	// Ensures User wants to continue
 	{
 		// Answer check to make sure the its equals to "y"
-		println!("Are you sure you want to continue with the size {} x {} [ y | n ]?", size_x, size_y);
+		print!("Are you sure you want to continue with the size {} x {} [ y | n ]: ", size_x, size_y);
+        let _ = std::io::stdout().flush();
 		let mut v: String = String::default();
 		let _ = std::io::stdin().read_line(&mut v).unwrap();
 
@@ -106,20 +119,37 @@ fn main() {
 
 	// Configures state
     // Sets Generator
-    let generator: &dyn math::formula::Generator = math::formula::SD;
+    print!("Enter generation Function: ");
+    let _ = std::io::stdout().flush().unwrap();
+    let mut gen_key = String::new();
+    let _ = std::io::stdin().read_line(&mut gen_key);
 
-	eval_function(size_x, size_y, max_i, generator);
+    let mut generators: HashMap<String, Box<&dyn math::formula::Generator>> = HashMap::new();
+    generators.insert("SD".to_string(),  Box::new(&math::formula::SD));
+    generators.insert("BS".to_string(),  Box::new(&math::formula::BS));
+    generators.insert("R".to_string(),   Box::new(&math::formula::R));
+    generators.insert("SYM".to_string(), Box::new(&math::formula::SYM));
 
+    let generator_function: Box<&dyn math::formula::Generator>;
+
+    generator_function = match generators.get(gen_key.trim()) {
+        Some(function_found) => function_found.to_owned(),
+        None => {
+            error_exit("Function generation method not found!".to_string());
+            std::process::exit(1);
+        }
+    };
+
+    // Runs Config
+    eval_function(size_x, size_y, max_i, generator_function);
+
+    // Finished Timings
 	let end_time = SystemTime::now()
 		.duration_since(UNIX_EPOCH)
 		.unwrap()
 		.as_secs_f64();
 
-	println!("[Finished in {:.1}s]", end_time as i64 - start_time as i64);
-
-	// Show Completion Message
-	{
-		println!("FINISHED!");
-		let _ = std::io::stdin().read_line(&mut String::new());
-	}
+    // Show Completion Message
+	println!("[Finished in {:.1}s]", end_time - start_time);
+    let _ = std::io::stdin().read_line(&mut String::new());
 }
