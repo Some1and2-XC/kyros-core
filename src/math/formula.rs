@@ -57,7 +57,7 @@ pub fn BS(max_i: u64, c: structs::Complex, mut z: structs::Complex) -> f64 {
         }
         z = z * z;
         if z.imaginary > 0. {
-            z.imaginary *= -1.;
+            z.imaginary = z.imaginary * -1.;
         }
         // z = z + c;
         z = z + new_c;
