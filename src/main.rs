@@ -14,6 +14,7 @@ mod math;
 extern crate image;
 
 use hsv;
+use std::env::args;
 use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
@@ -85,6 +86,8 @@ fn main() {
 
     // Defines Initial Values
 
+    let cli_args: Vec<String> = args().collect();
+
     // let size_x = 131_072u32;
     // let size_y = 131_072u32;
     let size_x = 1024u32;
@@ -99,12 +102,10 @@ fn main() {
         let mut v: String = String::default();
         let _ = std::io::stdin().read_line(&mut v).unwrap();
 
-        assert_eq!(v
-            .to_lowercase()
-            .chars()
-            .nth(0)
-            .unwrap()
-            , 'y');
+        if !(v.to_lowercase().chars().nth(0).unwrap().to_string() == "y".to_string()) {
+            error_exit("Early exit, declined continue on size check".to_string());
+            std::process::exit(1);
+        }
     }
 
     // Sets the starting time
@@ -120,6 +121,7 @@ fn main() {
     let mut gen_key = String::new();
     let _ = std::io::stdin().read_line(&mut gen_key);
 
+    // Initializes generators into a hashmap
     let mut generators: HashMap<String, Box<&dyn math::formula::Generator>> = HashMap::new();
     generators.insert("SD".to_string(),  Box::new(&math::formula::SD));
     generators.insert("BS".to_string(),  Box::new(&math::formula::BS));
