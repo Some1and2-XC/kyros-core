@@ -19,6 +19,8 @@ use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
 
+use crate::math::structs;
+
 fn error_exit(error_msg: String) {
     /*
     Function for exiting the program early with an error message. 
@@ -32,12 +34,10 @@ fn get_math_value(value: u32, max_ref: u32) -> f64 {
     4f64 * (value as f64) / (max_ref as f64 - 1f64) - 2f64
 }
 
-fn eval_function(size_x: u32, size_y: u32, max_i: u64, generator_function: Box<&dyn math::formula::Generator>) {
+fn eval_function(size_x: u32, size_y: u32, max_i: u64, generator_function: &dyn math::formula::FloatGenerator) {
     /*
        Function for getting the value of each point
        */
-    let get_point_value: &dyn math::formula::Generator = *generator_function;
-
     // Sets Image Values
     let mut img = image::ImageBuffer::new(size_x, size_y);
     for (_x, _y, pixel) in img.enumerate_pixels_mut() {
@@ -56,7 +56,7 @@ fn eval_function(size_x: u32, size_y: u32, max_i: u64, generator_function: Box<&
                 imaginary : get_math_value(i, size_y),
             };
 
-            let z_output = get_point_value.formula(max_i, c, z);
+            let z_output = generator_function(max_i, c, z);
             let pixel = img.get_pixel_mut(j, i);
             // Gets color value
             let out_rgb: (u8, u8, u8);
@@ -122,16 +122,21 @@ fn main() {
     let _ = std::io::stdin().read_line(&mut gen_key);
 
     // Initializes generators into a hashmap
-    let mut generators: HashMap<String, Box<&dyn math::formula::Generator>> = HashMap::new();
-    generators.insert("SD".to_string(),  Box::new(&math::formula::SD));
-    generators.insert("BS".to_string(),  Box::new(&math::formula::BS));
-    generators.insert("R".to_string(),   Box::new(&math::formula::R));
-    generators.insert("SYM".to_string(), Box::new(&math::formula::SYM));
+    type GenDataType = f64;
 
-    let generator_function: Box<&dyn math::formula::Generator>;
+    let mut generators: HashMap<String, &dyn math::formula::FloatGenerator> = HashMap::new();
+    generators.insert("SD".to_string(), &math::formula::SD);
+    /*
+    generators.insert("BS".to_string(),  math::formula::BS);
+    generators.insert("R".to_string(),   math::formula::R);
+    generators.insert("SYM".to_string(), math::formula::SYM);
+    */
+    let generator_function: &dyn math::formula::FloatGenerator;
 
     generator_function = match generators.get(gen_key.trim()) {
-        Some(function_found) => function_found.to_owned(),
+        Some(function_found) => {
+            function_found
+        },
         None => {
             error_exit("Function generation method not found!".to_string());
             std::process::exit(1);

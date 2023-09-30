@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+use std::process::Output;
+
 use super::structs;
 
 /*
@@ -11,22 +13,17 @@ SD
     SD stands for standard. This is the standard way of generating the mandelbrot set. 
 */
 
-pub trait Generator {
-    // The generator formula returns a floating point number to allow for TD values
-    fn formula(&self, max_i: u64, C: structs::Complex, Z: structs::Complex) -> f64;
-}
 
-impl<F> Generator for F where
-    F: Fn(u64, structs::Complex, structs::Complex) -> f64, {
-    fn formula(&self, max_i: u64, C: structs::Complex, Z: structs::Complex) -> f64 {
-        return self(max_i, C, Z);
-    }
-}
+// pub type FloatGenerator = Fn(u64, structs::Complex, structs::Complex) -> f64;
+pub trait FloatGenerator {}
+impl <F> FloatGenerator for F where F: Fn(u64, structs::Complex, structs::Complex) -> f64 {}
+// pub type Generator = &'static dyn Fn(u64, structs::Complex, structs::Complex);
+// pub type FloatGenerator = Fn(u64, structs::Complex, structs::Complex);
 
-pub fn SD(max_i: u64, _c: structs::Complex, mut z: structs::Complex) -> f64 {
+pub fn SD<FloatGenerator>(max_i: u64, mut c: structs::Complex, mut z: structs::Complex) -> f64 {
     let c: structs::Complex = z.clone();
     for iteration in 0..max_i {
-        if z.is_greater(2f64) {
+        if z.is_greater(2.0) {
             return iteration as f64;
         }
         z = z * z + c;
