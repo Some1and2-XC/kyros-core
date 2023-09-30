@@ -1,7 +1,5 @@
 #![allow(non_snake_case)]
 
-use std::process::Output;
-
 use super::structs;
 
 /*
@@ -13,14 +11,7 @@ SD
     SD stands for standard. This is the standard way of generating the mandelbrot set. 
 */
 
-
-// pub type FloatGenerator = Fn(u64, structs::Complex, structs::Complex) -> f64;
-pub trait FloatGenerator {}
-impl <F> FloatGenerator for F where F: Fn(u64, structs::Complex, structs::Complex) -> f64 {}
-// pub type Generator = &'static dyn Fn(u64, structs::Complex, structs::Complex);
-// pub type FloatGenerator = Fn(u64, structs::Complex, structs::Complex);
-
-pub fn SD<FloatGenerator>(max_i: u64, mut c: structs::Complex, mut z: structs::Complex) -> f64 {
+pub fn SD(max_i: u64, c: structs::Complex, mut z: structs::Complex) -> f64 {
     let c: structs::Complex = z.clone();
     for iteration in 0..max_i {
         if z.is_greater(2.0) {

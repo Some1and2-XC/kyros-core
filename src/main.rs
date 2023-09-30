@@ -7,7 +7,7 @@ Author : Mark T
   Date : 6/21/2023
 
   Main file for running processes
-  */
+*/
 
 mod math;
 
@@ -20,6 +20,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
 
 use crate::math::structs;
+
+type GenDataType = f64;
+type GenSignature = (u64, structs::Complex, structs::Complex);
 
 fn error_exit(error_msg: String) {
     /*
@@ -34,7 +37,7 @@ fn get_math_value(value: u32, max_ref: u32) -> f64 {
     4f64 * (value as f64) / (max_ref as f64 - 1f64) - 2f64
 }
 
-fn eval_function(size_x: u32, size_y: u32, max_i: u64, generator_function: &dyn math::formula::FloatGenerator) {
+fn eval_function(size_x: u32, size_y: u32, max_i: u64, generator_function: &dyn Fn(u64, structs::Complex, structs::Complex) -> f64) {
     /*
        Function for getting the value of each point
        */
@@ -88,6 +91,8 @@ fn main() {
 
     let cli_args: Vec<String> = args().collect();
 
+    println!("{:?}", cli_args);
+
     // let size_x = 131_072u32;
     // let size_y = 131_072u32;
     let size_x = 1024u32;
@@ -108,13 +113,8 @@ fn main() {
         }
     }
 
-    // Sets the starting time
-    let start_time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs_f64();
 
-    // Configures state
+    // State Configuration //
     // Sets Generator
     print!("Enter generation Function: ");
     let _ = std::io::stdout().flush().unwrap();
@@ -122,26 +122,30 @@ fn main() {
     let _ = std::io::stdin().read_line(&mut gen_key);
 
     // Initializes generators into a hashmap
-    type GenDataType = f64;
+    let mut generators: HashMap<String, &dyn Fn(u64, structs::Complex, structs::Complex) -> GenDataType> = HashMap::new();
+    generators.insert("SD".to_string(),  &math::formula::SD);
+    generators.insert("BS".to_string(),  &math::formula::BS);
+    generators.insert("R".to_string(),   &math::formula::R);
+    generators.insert("SYM".to_string(), &math::formula::SYM);
 
-    let mut generators: HashMap<String, &dyn math::formula::FloatGenerator> = HashMap::new();
-    generators.insert("SD".to_string(), &math::formula::SD);
-    /*
-    generators.insert("BS".to_string(),  math::formula::BS);
-    generators.insert("R".to_string(),   math::formula::R);
-    generators.insert("SYM".to_string(), math::formula::SYM);
-    */
-    let generator_function: &dyn math::formula::FloatGenerator;
+    let generator_function: &dyn Fn(u64, structs::Complex, structs::Complex) -> GenDataType;
 
     generator_function = match generators.get(gen_key.trim()) {
         Some(function_found) => {
             function_found
+            // return Box::new(v.to_owned());
         },
         None => {
             error_exit("Function generation method not found!".to_string());
             std::process::exit(1);
         }
     };
+
+    // Sets the starting time
+    let start_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs_f64();
 
     // Runs Config
     eval_function(size_x, size_y, max_i, generator_function);
