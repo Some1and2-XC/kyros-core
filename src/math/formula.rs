@@ -11,7 +11,8 @@ SD
     SD stands for standard. This is the standard way of generating the mandelbrot set. 
 */
 
-pub fn SD(max_i: u64, c: structs::Complex, mut z: structs::Complex) -> f64 {
+/*
+pub fn SD(max_i: u64, _c: structs::Complex, mut z: structs::Complex) -> f64 {
     let c: structs::Complex = z.clone();
     for iteration in 0..max_i {
         if z.is_greater(2.0) {
@@ -65,3 +66,4 @@ pub fn SYM(max_i: u64, c: structs::Complex, mut z: structs::Complex) -> f64 {
     }
     return max_i as f64;
 }
+*/
