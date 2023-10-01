@@ -20,7 +20,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
 use crate::math::structs;
 
-type GenDataType = f64;
+// type GenDataType = f64;
+type GenDataType = structs::Complex;
 
 #[derive(Debug, Default)]
 struct Config {
@@ -96,7 +97,7 @@ fn get_math_value(value: u32, max_ref: u32) -> f64 {
     4f64 * (value as f64) / (max_ref as f64 - 1f64) - 2f64
 }
 
-fn eval_function(config: Config, generator_function: &dyn Fn(u64, structs::Complex, structs::Complex) -> f64) {
+fn eval_function(config: Config, generator_function: &dyn Fn(structs::Complex, structs::Complex) -> GenDataType) {
     /*
        Function for getting the value of each point
        */
@@ -117,15 +118,26 @@ fn eval_function(config: Config, generator_function: &dyn Fn(u64, structs::Compl
     for i in 0..size_y {
         for j in 0..size_x {
 
-             // Sets Initial Value
+             // Sets Initial Z Value
             let mut z = math::structs::Complex {
                 real : get_math_value(j, size_x),
                 imaginary : get_math_value(i, size_y),
             };
 
-            for i in 0..max_i {
-                z = generator_function(max_i, c, z);
-            }
+            // Initialize Output Variable
+
+            // Runs Math
+            let c: structs::Complex = z.clone();
+
+            let mut iteration: u64 = 0;
+            loop {
+                if iteration == max_i { break; }
+                if z.is_greater(2.0) { break; }
+                z = generator_function(c, z);
+                iteration += 1;
+            };
+
+            let z_output = iteration as f64;
 
             // let z_output = generator_function(max_i, c, z);
             let pixel = img.get_pixel_mut(j, i);
@@ -165,13 +177,13 @@ fn main() {
     println!("Config : {:?}", config);
 
     // Initializes generators into a hashmap
-    let mut generators: HashMap<String, &dyn Fn(u64, structs::Complex, structs::Complex) -> GenDataType> = HashMap::new();
+    let mut generators: HashMap<String, &dyn Fn(structs::Complex, structs::Complex) -> GenDataType> = HashMap::new();
     generators.insert("SD".to_string(),  &math::formula::SD);
-    generators.insert("BS".to_string(),  &math::formula::BS);
     generators.insert("R".to_string(),   &math::formula::R);
+    generators.insert("BS".to_string(),  &math::formula::BS);
     generators.insert("SYM".to_string(), &math::formula::SYM);
 
-    let generator_function: &dyn Fn(u64, structs::Complex, structs::Complex) -> GenDataType;
+    let generator_function: &dyn Fn(structs::Complex, structs::Complex) -> GenDataType;
 
     generator_function = match generators.get(&config.gen_formula) {
         Some(function_found) => function_found,
