@@ -15,7 +15,6 @@ pub fn SD(c: structs::Complex, z: structs::Complex) -> structs::Complex {
     return z * z + c;
 }
 
-
 pub fn R(c: structs::Complex, z: structs::Complex) -> structs::Complex {
     let mut new_z = z * z + c;
     new_z.imaginary -= z.real;
@@ -25,16 +24,13 @@ pub fn R(c: structs::Complex, z: structs::Complex) -> structs::Complex {
 
 pub fn BS(c: structs::Complex, mut z: structs::Complex) -> structs::Complex {
     z = z * z;
-    if z.imaginary > 0. {
-        z.imaginary = z.imaginary * -1.;
+    if z.imaginary > 0.0 {
+        z.imaginary = z.imaginary * -1.0;
     }
     return z + c;
 }
 
 pub fn SYM(c: structs::Complex, z: structs::Complex) -> structs::Complex {
-    let mut new_z = z * z + c;
-    new_z.imaginary -= z.imaginary;
-    new_z.real -= z.real;
-    return new_z;
+    return z * z + c - z;
 }
 

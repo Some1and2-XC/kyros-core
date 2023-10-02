@@ -106,40 +106,55 @@ fn eval_function(config: Config, generator_function: &dyn Fn(structs::Complex, s
     let size_x: u32 = config.size_x;
     let size_y: u32 = config.size_y;
     let max_i: u64 = config.max_i;
+    let c_init: Option<structs::Complex> = config.c_init;
 
+    
+    let mut c = math::structs::Complex { real: 0f64, imaginary: 0f64, };
+    let mut z: math::structs::Complex;
+
+    // Sets Initial 'c' Value (If set)
+    let is_julia: bool = match c_init {
+        Some(value) => {
+            c = value;
+            true
+        },
+        None => false,
+    };
+
+    // Initializes Image Buffer
     let mut img = image::ImageBuffer::new(size_x, size_y);
     for (_x, _y, pixel) in img.enumerate_pixels_mut() {
         *pixel = image::Rgb([255, 255, 255]);
     }
 
-    let c = math::structs::Complex { real: 0f64, imaginary: 0f64, };
 
     // Goes through each pixel
     for i in 0..size_y {
         for j in 0..size_x {
 
              // Sets Initial Z Value
-            let mut z = math::structs::Complex {
+            z = math::structs::Complex {
                 real : get_math_value(j, size_x),
                 imaginary : get_math_value(i, size_y),
             };
 
-            // Initialize Output Variable
+            if is_julia == false {
+                c = z;
+            }
 
             // Runs Math
-            let c: structs::Complex = z.clone();
-
             let mut iteration: u64 = 0;
             loop {
                 if iteration == max_i { break; }
                 if z.is_greater(2.0) { break; }
+
                 z = generator_function(c, z);
+
                 iteration += 1;
             };
 
             let z_output = iteration as f64;
 
-            // let z_output = generator_function(max_i, c, z);
             let pixel = img.get_pixel_mut(j, i);
             // Gets color value
             let out_rgb: (u8, u8, u8);
@@ -174,7 +189,7 @@ fn main() {
 
     let config: Config = interactive_config();
 
-    println!("Config : {:?}", config);
+    println!("{:?}", config);
 
     // Initializes generators into a hashmap
     let mut generators: HashMap<String, &dyn Fn(structs::Complex, structs::Complex) -> GenDataType> = HashMap::new();

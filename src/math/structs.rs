@@ -5,7 +5,7 @@ Author : @Some1and2
 File for containing the logic for the Complex Struct
 */
 
-use std::ops::{ Add, Mul };
+use std::ops::{ Add, Sub, Mul };
 
 // Sets up Complex Struct
 #[derive(Debug, Clone, Copy)]
@@ -24,6 +24,17 @@ impl Add for Complex {
 			imaginary : self.imaginary + other.imaginary,
 		}
 	}
+}
+
+impl Sub for Complex {
+    type Output = Complex;
+
+    fn sub(self, other: Complex) -> Complex {
+        Complex {
+            real : self.real - other.real,
+            imaginary : self.imaginary - other.imaginary,
+        }
+    }
 }
 
 // Sets up Multiplication rules for Complex Numbers
