@@ -15,8 +15,6 @@ extern crate image;
 
 use hsv;
 
-use std::env::args;
-use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
 
@@ -37,7 +35,7 @@ struct Config {
     gen_formula:              String, // Specifies Formula for Generator
 }
 
-/// The kyros fractal imgae generator rewritten in rust. 
+/// The kyros fractal image generator rewritten in rust. 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -59,29 +57,6 @@ fn error_exit(error_msg: String) {
     print!("[Exit code : 1 | {:?}]", error_msg);
 }
 
-/// Function for easily getting input values from stdin. 
-fn input(out_msg: String) -> String {
-    print!("{}", out_msg);
-    let _ = std::io::stdout().flush();
-    let mut v: String = String::default();
-    let _ = std::io::stdin().read_line(&mut v).unwrap();
-    return v.trim().to_string();
-}
-
-/// Function for initializing interactive configuration. 
-fn interactive_config() -> Config {
-
-    // Initializes Configuration Values
-    let mut configuration = Config::default();
-
-    return configuration;
-}
-
-/// Function for getting the mathematical space of a point.  
-fn get_math_value(value: u32, max_ref: u32) -> f64 {
-    4f64 * (value as f64) / (max_ref as f64 - 1f64) - 2f64
-}
-
 /// Function for getting image from configuration and generator function. 
 fn eval_function(config: &Config, generator_function: &dyn Fn(structs::Complex, structs::Complex) -> GenDataType) -> image::RgbImage {
     // Unpacks Image Configuration
@@ -91,6 +66,10 @@ fn eval_function(config: &Config, generator_function: &dyn Fn(structs::Complex, 
     let c_init: Option<structs::Complex> = config.c_init;
     
     let mut c = math::structs::Complex { real: 0f64, imaginary: 0f64, };
+ 
+    let static_x_math_space_factor: f64 = 4.0 / (size_x as f64 - 1.0);
+    let static_y_math_space_factor: f64 = 4.0 / (size_y as f64 - 1.0);
+
     let mut z: math::structs::Complex;
 
     // Sets Initial 'c' Value (If set)
@@ -114,13 +93,11 @@ fn eval_function(config: &Config, generator_function: &dyn Fn(structs::Complex, 
 
              // Sets Initial Z Value
             z = math::structs::Complex {
-                real : get_math_value(j, size_x),
-                imaginary : get_math_value(i, size_y),
+                real : static_x_math_space_factor * j as f64 - 2.0,
+                imaginary : static_y_math_space_factor * i as f64 - 2.0,
             };
 
-            if is_julia == false {
-                c = z;
-            }
+            if is_julia == false { c = z; }
 
             // Runs Math
             let mut iteration: u64 = 0;
@@ -141,15 +118,15 @@ fn eval_function(config: &Config, generator_function: &dyn Fn(structs::Complex, 
             else if z_output == max_i as f64 {out_rgb = (0, 0, 0)}
             else {
                 out_rgb = hsv::hsv_to_rgb(
-                    ( 9f64 * z_output as f64 ) % 360f64,
-                    1f64,
-                    1f64,
+                    ( 9f64 * z_output as f64 ) % 360.0,
+                    1.0,
+                    1.0,
                 );
             };
 
             *pixel = image::Rgb([out_rgb.0, out_rgb.1, out_rgb.2]);
         }
-        print!("\t {:.2}% | {} / {}\r", 100f64*(i as f64 + 1f64) / size_y as f64, i+1, size_y);
+        print!("\t {:.2}% | {} / {}\r", 100.0 * (i as f64 + 1.0) / size_y as f64, i+1, size_y);
     }
     println!();
     return img;
@@ -162,22 +139,14 @@ fn main() {
     let cli_args = Args::parse();
     println!("{:?}", cli_args);
 
-    let config: Config;
-
-    if false {
-        config = interactive_config();
-    }
-
-    else {
-        config = Config {
-            count: 0,
-            c_init: None,
-            size_x: 256,
-            size_y: 256,
-            max_i: 1024,
-            gen_formula: "SD".to_string(),
-        };
-    }
+    let config = Config {
+        count: 0,
+        c_init: None,
+        size_x: cli_args.pixels,
+        size_y: cli_args.pixels,
+        max_i: cli_args.iterations,
+        gen_formula: cli_args.formula,
+    };
 
     println!("{:?}", config);
 
