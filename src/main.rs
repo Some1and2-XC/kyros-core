@@ -20,7 +20,9 @@ use std::collections::HashMap;
 
 use crate::math::structs;
 
+use clap::error::ErrorKind;
 use clap::Parser;
+use clap::CommandFactory;
 
 // type GenDataType = f64;
 type GenDataType = structs::Complex;
@@ -35,26 +37,31 @@ struct Config {
     gen_formula:              String, // Specifies Formula for Generator
 }
 
-/// The kyros fractal image generator rewritten in rust. 
+static ABOUT_CLI_ARGS: &str = "
+ ~ Kyros
+A CLI tool for generating fractal images. 
+";
+
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(about=ABOUT_CLI_ARGS)]
+#[command(version, long_about = None)]
 struct Args {
+
     /// The amount of pixels to generate
-    #[arg(short, long, default_value_t = 256)]
+    #[arg(short, long, default_value_t = 256, value_name="INT")]
     pixels: u32,
 
     /// The amount of iterations to run per pixel
-    #[arg(long, default_value_t = 1024)]
+    #[arg(long, default_value_t = 1024, value_name="INT")]
     iterations: u64,
 
     /// The generation function to use
-    #[arg(short, long, default_value_t = ("SD".to_string()))] // The LSP lies, parentheses are needed
+    #[arg(short, long, default_value_t=("SD".to_string()), value_name="STR")] // The Compiler lies, parentheses are needed
     formula: String,
-}
 
-/// Function for exiting the program early with an error message. 
-fn error_exit(error_msg: String) {
-    print!("[Exit code : 1 | {:?}]", error_msg);
+    /// Flag to confirm image generation
+    #[arg(short, long, default_value_t = false)]
+    y_confirm: bool,
 }
 
 /// Function for getting image from configuration and generator function. 
@@ -137,7 +144,13 @@ fn eval_function(config: &Config, generator_function: &dyn Fn(structs::Complex, 
 fn main() {
     // Defines Initial Values
     let cli_args = Args::parse();
-    println!("{:?}", cli_args);
+
+    if !cli_args.y_confirm {
+        Args::command().error(
+            ErrorKind::MissingRequiredArgument,
+            "Use '-y' to generate image from configuration. Note a '.png' file will be created."
+        ).exit();
+    }
 
     let config = Config {
         count: 0,
@@ -162,8 +175,10 @@ fn main() {
     generator_function = match generators.get(&config.gen_formula) {
         Some(function_found) => function_found,
         None => {
-            error_exit("Function generation method not found!".to_string());
-            std::process::exit(1);
+            Args::command().error(
+                ErrorKind::InvalidValue,
+                format!("Function generation method '{}' not found!", config.gen_formula)
+            ).exit();
         }
     };
 
