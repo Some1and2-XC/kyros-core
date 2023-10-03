@@ -42,9 +42,21 @@ static ABOUT_CLI_ARGS: &str = "
 A CLI tool for generating fractal images. 
 ";
 
+// static LONG_ABOUT_CLI_ARGS: &str = "";
+
+// /*
+static LONG_ABOUT_CLI_ARGS: &str = "
+ ~ Kyros
+A CLI tool for generating fractal images. 
+Woah this is a long description!
+";
+// */
+
+
 #[derive(Parser, Debug)]
 #[command(about=ABOUT_CLI_ARGS)]
-#[command(version, long_about = None)]
+#[command(long_about=LONG_ABOUT_CLI_ARGS)]
+#[command(version)]
 struct Args {
 
     /// The amount of pixels to generate
@@ -52,15 +64,19 @@ struct Args {
     pixels: u32,
 
     /// The amount of iterations to run per pixel
-    #[arg(long, default_value_t = 1024, value_name="INT")]
+    #[arg(short, long, default_value_t = 1024, value_name="INT")]
     iterations: u64,
 
     /// The generation function to use
     #[arg(short, long, default_value_t=("SD".to_string()), value_name="STR")] // The Compiler lies, parentheses are needed
     formula: String,
 
-    /// Flag to confirm image generation
-    #[arg(short, long, default_value_t = false)]
+    /// Uses Julia set style generation
+    #[arg(short, long, default_value_t=false, value_name="BOOL")]
+    julia: bool,
+
+    /// Confirm image generation
+    #[arg(short, long, default_value_t=false)]
     y_confirm: bool,
 }
 
@@ -121,7 +137,7 @@ fn eval_function(config: &Config, generator_function: &dyn Fn(structs::Complex, 
             // Gets color value
             let out_rgb: (u8, u8, u8);
 
-            if z_output == 0. {out_rgb = (255, 255, 255)}
+            if z_output == 0.0 {out_rgb = (255, 255, 255)}
             else if z_output == max_i as f64 {out_rgb = (0, 0, 0)}
             else {
                 out_rgb = hsv::hsv_to_rgb(
@@ -152,7 +168,7 @@ fn main() {
         ).exit();
     }
 
-    let config = Config {
+    let mut config = Config {
         count: 0,
         c_init: None,
         size_x: cli_args.pixels,
@@ -160,6 +176,13 @@ fn main() {
         max_i: cli_args.iterations,
         gen_formula: cli_args.formula,
     };
+
+    if cli_args.julia {
+        config.c_init = Some(structs::Complex {
+            real: 0.08004012786314796,
+            imaginary: -0.6359321976472476,
+        });
+    }
 
     println!("{:?}", config);
 
@@ -191,7 +214,7 @@ fn main() {
     // Runs Config, gets 32 byte img object
     let img = eval_function(&config, generator_function);
     println!("Saving File!");
-    img.save(format!("out#{:}.png", config.count)).unwrap();
+    img.save(format!("out#{}.png", config.count)).unwrap();
 
     // Finished Timings
     let end_time = SystemTime::now()
