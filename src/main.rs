@@ -84,13 +84,16 @@ struct Args {
 }
 
 /// Function for getting image from configuration and generator function. 
-fn eval_function(config: &Config, generator_function: &dyn Fn(structs::Complex, structs::Complex) -> structs::Complex, color_function: &dyn Fn(f64, u64) -> (u8, u8, u8)) -> image::RgbImage {
+fn eval_function(config: &Config) -> image::RgbImage {
     // Unpacks Image Configuration
     let size_x: u32 = config.size_x;
     let size_y: u32 = config.size_y;
     let max_i: u64 = config.max_i;
     let c_init: Option<structs::Complex> = config.c_init;
     
+    let generator_function = get_formula(&config.gen_formula.as_str());
+    let color_function = get_color(&config.color_formula.as_str());
+
     let mut c = math::structs::Complex { real: 0f64, imaginary: 0f64, };
  
     let static_x_math_space_factor: f64 = 4.0 / (size_x as f64 - 1.0);
@@ -183,9 +186,6 @@ fn main() {
 
     println!("{:?}", config);
 
-    let generator_function = get_formula(&config.gen_formula.as_str());
-    let color_function = get_color(&config.color_formula.as_str());
-
     // Sets the starting time
     let start_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -193,7 +193,7 @@ fn main() {
         .as_secs_f64();
 
     // Runs Config, gets 32 byte img object
-    let img = eval_function(&config, generator_function, color_function);
+    let img = eval_function(&config);
     println!("Saving File!");
     img.save(format!("out#{}.png", config.count)).unwrap();
 
