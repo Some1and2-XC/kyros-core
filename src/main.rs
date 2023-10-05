@@ -1,6 +1,6 @@
 // #![allow(dead_code)]
 // #![allow(unused_variables)]
-
+#![allow(unused_parens)]
 
 /*
 Author : Mark T
@@ -13,19 +13,19 @@ mod math;
 
 extern crate image;
 
-use hsv;
-
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::collections::HashMap;
 
+use crate::color::get_color;
+use crate::math::formula::get_formula;
+// Project Crates
 use crate::math::structs;
+mod color;
+// use crate::color::color;
 
+// CLI Crates
 use clap::error::ErrorKind;
 use clap::Parser;
 use clap::CommandFactory;
-
-// type GenDataType = f64;
-type GenDataType = structs::Complex;
 
 #[derive(Debug, Default)]
 struct Config {
@@ -35,6 +35,7 @@ struct Config {
     size_y:                      u32, // Sets Image Height
     max_i:                       u64, // Sets Maximum Iterations for Generator
     gen_formula:              String, // Specifies Formula for Generator
+    color_formula:            String, // Specifies Formula for Colors
 }
 
 static ABOUT_CLI_ARGS: &str = "
@@ -52,13 +53,11 @@ Woah this is a long description!
 ";
 // */
 
-
 #[derive(Parser, Debug)]
 #[command(about=ABOUT_CLI_ARGS)]
 #[command(long_about=LONG_ABOUT_CLI_ARGS)]
 #[command(version)]
 struct Args {
-
     /// The amount of pixels to generate
     #[arg(short, long, default_value_t = 256, value_name="INT")]
     pixels: u32,
@@ -68,8 +67,12 @@ struct Args {
     iterations: u64,
 
     /// The generation function to use
-    #[arg(short, long, default_value_t=("SD".to_string()), value_name="STR")] // The Compiler lies, parentheses are needed
-    formula: String,
+    #[arg(long, default_value_t=("SD".to_string()), value_name="STR")] // The Compiler lies, parentheses are needed
+    math: String,
+
+    /// Specifies color function to use
+    #[arg(long, default_value_t=("ROTATIONAL".to_string()), value_name="STR")]
+    color: String,
 
     /// Uses Julia set style generation
     #[arg(short, long, default_value_t=false, value_name="BOOL")]
@@ -81,7 +84,7 @@ struct Args {
 }
 
 /// Function for getting image from configuration and generator function. 
-fn eval_function(config: &Config, generator_function: &dyn Fn(structs::Complex, structs::Complex) -> GenDataType) -> image::RgbImage {
+fn eval_function(config: &Config, generator_function: &dyn Fn(structs::Complex, structs::Complex) -> structs::Complex, color_function: &dyn Fn(f64, u64) -> (u8, u8, u8)) -> image::RgbImage {
     // Unpacks Image Configuration
     let size_x: u32 = config.size_x;
     let size_y: u32 = config.size_y;
@@ -134,18 +137,11 @@ fn eval_function(config: &Config, generator_function: &dyn Fn(structs::Complex, 
             let z_output = iteration as f64;
 
             let pixel = img.get_pixel_mut(j, i);
-            // Gets color value
-            let out_rgb: (u8, u8, u8);
 
-            if z_output == 0.0 {out_rgb = (255, 255, 255)}
-            else if z_output == max_i as f64 {out_rgb = (0, 0, 0)}
-            else {
-                out_rgb = hsv::hsv_to_rgb(
-                    ( 9f64 * z_output as f64 ) % 360.0,
-                    1.0,
-                    1.0,
-                );
-            };
+            // Gets color value
+            // let out_rgb: (u8, u8, u8);
+
+            let out_rgb = color_function(z_output, max_i);
 
             *pixel = image::Rgb([out_rgb.0, out_rgb.1, out_rgb.2]);
         }
@@ -174,7 +170,8 @@ fn main() {
         size_x: cli_args.pixels,
         size_y: cli_args.pixels,
         max_i: cli_args.iterations,
-        gen_formula: cli_args.formula,
+        gen_formula: cli_args.math,
+        color_formula: cli_args.color,
     };
 
     if cli_args.julia {
@@ -186,24 +183,8 @@ fn main() {
 
     println!("{:?}", config);
 
-    // Initializes generators into a hashmap
-    let mut generators: HashMap<String, &dyn Fn(structs::Complex, structs::Complex) -> GenDataType> = HashMap::new();
-    generators.insert("SD".to_string(),  &math::formula::SD);
-    generators.insert("R".to_string(),   &math::formula::R);
-    generators.insert("BS".to_string(),  &math::formula::BS);
-    generators.insert("SYM".to_string(), &math::formula::SYM);
-
-    let generator_function: &dyn Fn(structs::Complex, structs::Complex) -> GenDataType;
-
-    generator_function = match generators.get(&config.gen_formula) {
-        Some(function_found) => function_found,
-        None => {
-            Args::command().error(
-                ErrorKind::InvalidValue,
-                format!("Function generation method '{}' not found!", config.gen_formula)
-            ).exit();
-        }
-    };
+    let generator_function = get_formula(&config.gen_formula.as_str());
+    let color_function = get_color(&config.color_formula.as_str());
 
     // Sets the starting time
     let start_time = SystemTime::now()
@@ -212,7 +193,7 @@ fn main() {
         .as_secs_f64();
 
     // Runs Config, gets 32 byte img object
-    let img = eval_function(&config, generator_function);
+    let img = eval_function(&config, generator_function, color_function);
     println!("Saving File!");
     img.save(format!("out#{}.png", config.count)).unwrap();
 
