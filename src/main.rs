@@ -1,7 +1,3 @@
-// #![allow(dead_code)]
-// #![allow(unused_variables)]
-#![allow(unused_parens)]
-
 /*
 Author : Mark T
   Date : 6/21/2023
@@ -20,12 +16,15 @@ use crate::math::formula::get_formula;
 // Project Crates
 use crate::math::structs;
 mod color;
-// use crate::color::color;
 
 // CLI Crates
+use clap::Command;
+use clap::Arg;
+use clap::ArgAction;
 use clap::error::ErrorKind;
 use clap::Parser;
 use clap::CommandFactory;
+// use clap::Subcommand;
 
 #[derive(Debug, Default)]
 struct Config {
@@ -43,21 +42,24 @@ static ABOUT_CLI_ARGS: &str = "
 A CLI tool for generating fractal images. 
 ";
 
-// static LONG_ABOUT_CLI_ARGS: &str = "";
 
-// /*
-static LONG_ABOUT_CLI_ARGS: &str = "
+const LONG_ABOUT_CLI_ARGS: &str = "
  ~ Kyros
 A CLI tool for generating fractal images. 
 Woah this is a long description!
 ";
-// */
 
 #[derive(Parser, Debug)]
 #[command(about=ABOUT_CLI_ARGS)]
 #[command(long_about=LONG_ABOUT_CLI_ARGS)]
 #[command(version)]
 struct Args {
+
+    /*
+    #[command(subcommand)]
+    command: Commands,
+    */
+
     /// The amount of pixels to generate
     #[arg(short, long, default_value_t = 256, value_name="INT")]
     pixels: u32,
@@ -67,8 +69,8 @@ struct Args {
     iterations: u64,
 
     /// The generation function to use
-    #[arg(long, default_value_t=("SD".to_string()), value_name="STR")] // The Compiler lies, parentheses are needed
-    math: String,
+    #[arg(short, long, default_value_t=("SD".to_string()), value_name="STR", long_help="Sets the generation function to use. \nSet this value to 'HELP' for more information.")] // The Compiler lies, parentheses are needed
+    formula: String,
 
     /// Specifies color function to use
     #[arg(long, default_value_t=("ROTATIONAL".to_string()), value_name="STR")]
@@ -79,12 +81,25 @@ struct Args {
     julia: bool,
 
     /// Confirm image generation
-    #[arg(short, long, default_value_t=false)]
+    #[arg(short, long, required(true))]
     y_confirm: bool,
 }
 
+/*
+#[derive(Debug, Subcommand)]
+enum Commands {
+
+    /// Demo Math Thing
+    Math {
+        /// testing number
+        n: String,
+    }
+}
+*/
+
 /// Function for getting image from configuration and generator function. 
 fn eval_function(config: &Config) -> image::RgbImage {
+    
     // Unpacks Image Configuration
     let size_x: u32 = config.size_x;
     let size_y: u32 = config.size_y;
@@ -157,15 +172,43 @@ fn eval_function(config: &Config) -> image::RgbImage {
 
 /// Main function of the program
 fn main() {
+
+    /*
+    // Defines CLI
+    let cmd = Command::new("Kyros")
+        .arg(Arg::new("pixels")
+            .default_value(256u32);
+            .short('p')
+            .long("pixels")
+            .action(ArgAction::Set)
+            .help("The amount of pixels to generate"))
+        .arg(Arg::new("iterations")
+            .short('i')
+            .long("iterations")
+            .action(ArgAction::Set)
+            .help("The amount of iterations to run per pixel"))
+        .arg(Arg::new("formula")
+            .short('f')
+            .long("formula")
+            .action(ArgAction::Set)
+            .help("The generation function to use"))
+        .arg(Arg::new("color")
+            .long("color")
+            .action(ArgAction::Set)
+            .help("The color function to use"))
+        .arg(Arg::new("julia")
+            .short('j')
+            .long("julia")
+            .help("Uses Julia set style generation"))
+        .arg(Arg::new("confirm")
+            .short('y')
+            .long("confirm")
+            .help("Confirms image generation"))
+        .get_matches();
+    */
+
     // Defines Initial Values
     let cli_args = Args::parse();
-
-    if !cli_args.y_confirm {
-        Args::command().error(
-            ErrorKind::MissingRequiredArgument,
-            "Use '-y' to generate image from configuration. Note a '.png' file will be created."
-        ).exit();
-    }
 
     let mut config = Config {
         count: 0,
@@ -173,7 +216,7 @@ fn main() {
         size_x: cli_args.pixels,
         size_y: cli_args.pixels,
         max_i: cli_args.iterations,
-        gen_formula: cli_args.math,
+        gen_formula: cli_args.formula,
         color_formula: cli_args.color,
     };
 
@@ -183,6 +226,7 @@ fn main() {
             imaginary: -0.6359321976472476,
         });
     }
+
 
     println!("{:?}", config);
 
@@ -194,7 +238,7 @@ fn main() {
 
     // Runs Config, gets 32 byte img object
     let img = eval_function(&config);
-    println!("Saving File!");
+    println!("Saving File...");
     img.save(format!("out#{}.png", config.count)).unwrap();
 
     // Finished Timings
