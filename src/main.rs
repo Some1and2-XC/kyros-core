@@ -99,7 +99,7 @@ enum Commands {
 
 /// Function for getting image from configuration and generator function. 
 fn eval_function(config: &Config) -> image::RgbImage {
-    
+
     // Unpacks Image Configuration
     let size_x: u32 = config.size_x;
     let size_y: u32 = config.size_y;
@@ -173,41 +173,7 @@ fn eval_function(config: &Config) -> image::RgbImage {
 /// Main function of the program
 fn main() {
 
-    /*
-    // Defines CLI
-    let cmd = Command::new("Kyros")
-        .arg(Arg::new("pixels")
-            .default_value(256u32);
-            .short('p')
-            .long("pixels")
-            .action(ArgAction::Set)
-            .help("The amount of pixels to generate"))
-        .arg(Arg::new("iterations")
-            .short('i')
-            .long("iterations")
-            .action(ArgAction::Set)
-            .help("The amount of iterations to run per pixel"))
-        .arg(Arg::new("formula")
-            .short('f')
-            .long("formula")
-            .action(ArgAction::Set)
-            .help("The generation function to use"))
-        .arg(Arg::new("color")
-            .long("color")
-            .action(ArgAction::Set)
-            .help("The color function to use"))
-        .arg(Arg::new("julia")
-            .short('j')
-            .long("julia")
-            .help("Uses Julia set style generation"))
-        .arg(Arg::new("confirm")
-            .short('y')
-            .long("confirm")
-            .help("Confirms image generation"))
-        .get_matches();
-    */
-
-    // Defines Initial Values
+    // Defines values from CLI arguments
     let cli_args = Args::parse();
 
     let mut config = Config {

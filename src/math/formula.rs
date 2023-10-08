@@ -10,9 +10,6 @@ use clap::CommandFactory;
 # Purpose
 This section of the code is for defining the different functions that are used
 to generate images. This is the function that gets run on each pixel. 
-# Definitions
-SD
-    SD stands for standard. This is the standard way of generating the mandelbrot set. 
 */
 
 
@@ -49,7 +46,7 @@ fn SYM(c: structs::Complex, z: structs::Complex) -> structs::Complex {
     return z * z + c - z;
 }
 
-/// Sets Bootleg hashmap cuz rust is a great language sent from god
+/// Sets Bootleg hashmap for formulas
 ///   FORMULAS.0 == Key Value
 ///   FORMULAS.1 == Function Value
 ///   FORMULAS.2 == Documentation Value
