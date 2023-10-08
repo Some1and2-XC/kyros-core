@@ -27,6 +27,16 @@ fn R(c: structs::Complex, z: structs::Complex) -> structs::Complex {
     return new_z;
 }
 
+fn ABR(c: structs::Complex, z: structs::Complex) -> structs::Complex {
+    let mut new_z = z * z;
+    if new_z.imaginary < 0.0 {
+        new_z.imaginary *= -1.0;
+    }
+    new_z.imaginary -= z.real;
+    new_z.real -= z.imaginary;
+    return new_z + c;
+}
+
 fn BS(c: structs::Complex, mut z: structs::Complex) -> structs::Complex {
     z = z * z;
     if z.imaginary > 0.0 {
@@ -43,9 +53,10 @@ fn SYM(c: structs::Complex, z: structs::Complex) -> structs::Complex {
 ///   FORMULAS.0 == Key Value
 ///   FORMULAS.1 == Function Value
 ///   FORMULAS.2 == Documentation Value
-const FORMULAS: [(&str, &dyn Fn(structs::Complex, structs::Complex) -> structs::Complex, &str);4] = [
+const FORMULAS: [(&str, &dyn Fn(structs::Complex, structs::Complex) -> structs::Complex, &str);5] = [
     ("SD"  , &SD  , "Standard z = z^2 + c"),
     ("R"   , &R   , "Custom Rabbit Generator"),
+    ("ABR" , &ABR , "Absolute Value Rabbit Generator"),
     ("BS"  , &BS  , "Burning Ship Generator"),
     ("SYM" , &SYM , "A Symetrical Mandelbrot Like Generation"),
 ];
