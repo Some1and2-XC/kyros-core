@@ -9,6 +9,7 @@ mod math;
 
 extern crate image;
 
+use std::mem::size_of;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::color::get_color;
@@ -26,6 +27,7 @@ use clap::Parser;
 use clap::CommandFactory;
 // use clap::Subcommand;
 
+/// Main object for defining generation configuration. 
 #[derive(Debug, Default)]
 struct Config {
     count:                       u64, // Index of the generated image
@@ -35,6 +37,18 @@ struct Config {
     max_i:                       u64, // Sets Maximum Iterations for Generator
     gen_formula:              String, // Specifies Formula for Generator
     color_formula:            String, // Specifies Formula for Colors
+    math_frame:            MathFrame,
+}
+
+/// Struct for factor & offset for math space
+/// This is used to calculate where each pixel is mapped to
+#[derive(Debug, Default)]
+struct MathFrame {
+    static_x_math_space_factor: f64,
+    static_x_math_space_offset: f64,
+
+    static_y_math_space_factor: f64,
+    static_y_math_space_offset: f64,   
 }
 
 static ABOUT_CLI_ARGS: &str = "
@@ -54,11 +68,6 @@ Woah this is a long description!
 #[command(long_about=LONG_ABOUT_CLI_ARGS)]
 #[command(version)]
 struct Args {
-
-    /*
-    #[command(subcommand)]
-    command: Commands,
-    */
 
     /// The amount of pixels to generate
     #[arg(short, long, default_value_t = 256, value_name="INT")]
@@ -85,18 +94,6 @@ struct Args {
     y_confirm: bool,
 }
 
-/*
-#[derive(Debug, Subcommand)]
-enum Commands {
-
-    /// Demo Math Thing
-    Math {
-        /// testing number
-        n: String,
-    }
-}
-*/
-
 /// Function for getting image from configuration and generator function. 
 fn eval_function(config: &Config) -> image::RgbImage {
 
@@ -105,18 +102,11 @@ fn eval_function(config: &Config) -> image::RgbImage {
     let size_y: u32 = config.size_y;
     let max_i: u64 = config.max_i;
     let c_init: Option<structs::Complex> = config.c_init;
-    
     let generator_function = get_formula(&config.gen_formula.as_str());
     let color_function = get_color(&config.color_formula.as_str());
 
-    let mut c = math::structs::Complex { real: 0f64, imaginary: 0f64, };
- 
-    let static_x_math_space_factor: f64 = 4.0 / (size_x as f64 - 1.0);
-    let static_y_math_space_factor: f64 = 4.0 / (size_y as f64 - 1.0);
-
-    let mut z: math::structs::Complex;
-
     // Sets Initial 'c' Value (If set)
+    let mut c = math::structs::Complex { real: 0f64, imaginary: 0f64, };
     let is_julia: bool = match c_init {
         Some(value) => {
             c = value;
@@ -124,6 +114,14 @@ fn eval_function(config: &Config) -> image::RgbImage {
         },
         None => false,
     };
+ 
+    let static_x_math_space_factor = config.math_frame.static_x_math_space_factor;
+    let static_x_math_space_offset = config.math_frame.static_x_math_space_offset;
+
+    let static_y_math_space_factor = config.math_frame.static_y_math_space_factor;
+    let static_y_math_space_offset = config.math_frame.static_y_math_space_offset;
+
+    let mut z: math::structs::Complex;
 
     // Initializes Image Buffer
     let mut img = image::ImageBuffer::new(size_x, size_y);
@@ -137,8 +135,8 @@ fn eval_function(config: &Config) -> image::RgbImage {
 
              // Sets Initial Z Value
             z = math::structs::Complex {
-                real : static_x_math_space_factor * j as f64 - 2.0,
-                imaginary : static_y_math_space_factor * i as f64 - 2.0,
+                real      : static_x_math_space_factor * j as f64 - static_x_math_space_offset,
+                imaginary : static_y_math_space_factor * i as f64 - static_y_math_space_offset,
             };
 
             if is_julia == false { c = z; }
@@ -184,6 +182,12 @@ fn main() {
         max_i: cli_args.iterations,
         gen_formula: cli_args.formula,
         color_formula: cli_args.color,
+        math_frame: MathFrame {
+            static_x_math_space_factor: 4.0 / (size_x as f64 - 1.0),
+            static_x_math_space_offset: 2.0,
+            static_y_math_space_factor: 4.0 / (size_y as f64 - 1.0),
+            static_y_math_space_offset: 2.0,
+        }
     };
 
     if cli_args.julia {
