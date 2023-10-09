@@ -154,9 +154,6 @@ fn eval_function(config: &Config) -> image::RgbImage {
 
             let pixel = img.get_pixel_mut(j, i);
 
-            // Gets color value
-            // let out_rgb: (u8, u8, u8);
-
             let out_rgb = color_function(z_output, max_i);
 
             *pixel = image::Rgb([out_rgb.0, out_rgb.1, out_rgb.2]);
@@ -183,9 +180,9 @@ fn main() {
         gen_formula: cli_args.formula,
         color_formula: cli_args.color,
         math_frame: MathFrame {
-            static_x_math_space_factor: 4.0 / (size_x as f64 - 1.0),
+            static_x_math_space_factor: 4.0 / (cli_args.pixels as f64 - 1.0),
             static_x_math_space_offset: 2.0,
-            static_y_math_space_factor: 4.0 / (size_y as f64 - 1.0),
+            static_y_math_space_factor: 4.0 / (cli_args.pixels as f64 - 1.0),
             static_y_math_space_offset: 2.0,
         }
     };
@@ -196,7 +193,6 @@ fn main() {
             imaginary: -0.6359321976472476,
         });
     }
-
 
     println!("{:?}", config);
 
