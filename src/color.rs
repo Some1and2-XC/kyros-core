@@ -12,40 +12,50 @@ use clap::CommandFactory;
 
 
 /// Rotational Coloring function for generation. Uses HSV rotational color. 
-fn ROTATIONAL(n: f64, max_i: u64) -> (u8, u8, u8) {
+fn ROTATIONAL(n: f64) -> f64 {
 
     // Gets color value
-    let out_rgb: (u8, u8, u8);
 
-    if n == 0.0 {out_rgb = (255, 255, 255)}
-    else if n == max_i as f64 {out_rgb = (0, 0, 0)}
-    else {
-        out_rgb = hsv::hsv_to_rgb(
-            ( 9f64 * n as f64 ) % 360.0,
-            1.0,
-            1.0,
-        );
-    };
-    return out_rgb;
+    return 9.0 * n;
 }
 
-const COLORS: [(&str, &dyn Fn(f64, u64) -> (u8, u8, u8));1] = [
-    ("ROTATIONAL", &ROTATIONAL),
+/// Sinusoidal Coloring function for generation. 
+fn SINUSOIDAL(n: f64) -> f64 {
+
+    let max_value: f64 = 277.0;
+    let min_value: f64 = 420.0;
+
+    let rate_of_color_change: f64 = 9.0;
+
+    // 0.0174532925199 = pi / 180
+    return ((max_value - min_value) * 0.5 * (n * rate_of_color_change * 0.0174532925199).cos() +
+        (max_value + min_value) * 0.5) % 360.0;
+}
+
+const COLORS: [(&str, &dyn Fn(f64) -> f64, &str);2] = [
+    ("ROTATIONAL", &ROTATIONAL, "0"),
+    ("SINUSOIDAL", &SINUSOIDAL, "0"),
 ];
 
 /// Function for getting the color formula from config
-pub fn get_color(color: &str) -> &dyn Fn(f64, u64) -> (u8, u8, u8) {
+pub fn get_color(color: &str) -> &dyn Fn(f64) -> f64 {
 
     // Tries to find function in FORMULAS const
-    for (key, value) in COLORS.iter() {
+    for (key, value, _) in COLORS.iter() {
         if key == &color {
             return value;
         }
     }
 
+    let color_string: String = COLORS
+        .iter()
+        .map(|v| format!("  {}\t{}", v.0, v.2))
+        .collect::<Vec<String>>()
+        .join("\n");
+
     // If not found throw error
     Args::command().error(
         ErrorKind::InvalidValue,
-        format!("Color generation method '{}' not found!", color)
+        format!("Color generation method '{}' not found!\n\nAllowed Formulas:\n{}", color, color_string)
     ).exit();
 }

@@ -9,7 +9,6 @@ mod math;
 
 extern crate image;
 
-use std::mem::size_of;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::color::get_color;
@@ -19,12 +18,14 @@ use crate::math::structs;
 mod color;
 
 // CLI Crates
+use clap::Parser;
+/*
 use clap::Command;
 use clap::Arg;
 use clap::ArgAction;
 use clap::error::ErrorKind;
-use clap::Parser;
 use clap::CommandFactory;
+*/
 // use clap::Subcommand;
 
 /// Main object for defining generation configuration. 
@@ -150,12 +151,23 @@ fn eval_function(config: &Config) -> image::RgbImage {
                 iteration += 1;
             };
 
+            // Sets Output Value
             let z_output = iteration as f64;
 
+            // Gets pixel pointer
             let pixel = img.get_pixel_mut(j, i);
 
-            let out_rgb = color_function(z_output, max_i);
-
+            // Sets Pixel Value
+            let out_rgb: (u8, u8, u8);
+            if z_output == 0.0 {out_rgb = (255, 255, 255)}
+            else if z_output == max_i as f64 {out_rgb = (0, 0, 0)}
+            else {
+                out_rgb = hsv::hsv_to_rgb(
+                    color_function(z_output).rem_euclid(360.0),
+                    1.0,
+                    1.0
+                );
+            };
             *pixel = image::Rgb([out_rgb.0, out_rgb.1, out_rgb.2]);
         }
         print!("\t {:.2}% | {} / {}\r", 100.0 * (i as f64 + 1.0) / size_y as f64, i+1, size_y);
