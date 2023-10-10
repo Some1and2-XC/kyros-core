@@ -6,19 +6,23 @@ Author : Mark T
 */
 
 mod math;
+mod color;
+mod shadows;
 
 extern crate image;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::color::get_color;
+use crate::shadows::get_shadow;
 use crate::math::formula::get_formula;
+
 // Project Crates
 use crate::math::structs;
-mod color;
 
 // CLI Crates
 use clap::Parser;
+
 /*
 use clap::Command;
 use clap::Arg;
@@ -38,6 +42,7 @@ struct Config {
     max_i:                       u64, // Sets Maximum Iterations for Generator
     gen_formula:              String, // Specifies Formula for Generator
     color_formula:            String, // Specifies Formula for Colors
+    shadow_formula:           String, // Specifies Formula for Shadows
     math_frame:            MathFrame,
 }
 
@@ -86,6 +91,10 @@ struct Args {
     #[arg(long, default_value_t=("ROTATIONAL".to_string()), value_name="STR")]
     color: String,
 
+    /// Specifies shadow function to use
+    #[arg(long, default_value_t=("none".to_string()), value_name="STR")]
+    shadow: String,
+
     /// Uses Julia set style generation
     #[arg(short, long, default_value_t=false, value_name="BOOL")]
     julia: bool,
@@ -103,8 +112,10 @@ fn eval_function(config: &Config) -> image::RgbImage {
     let size_y: u32 = config.size_y;
     let max_i: u64 = config.max_i;
     let c_init: Option<structs::Complex> = config.c_init;
+
     let generator_function = get_formula(&config.gen_formula.as_str());
     let color_function = get_color(&config.color_formula.as_str());
+    let shadow_function = get_shadow(&config.shadow_formula.as_str());
 
     // Sets Initial 'c' Value (If set)
     let mut c = math::structs::Complex { real: 0f64, imaginary: 0f64, };
@@ -126,9 +137,6 @@ fn eval_function(config: &Config) -> image::RgbImage {
 
     // Initializes Image Buffer
     let mut img = image::ImageBuffer::new(size_x, size_y);
-    for (_x, _y, pixel) in img.enumerate_pixels_mut() {
-        *pixel = image::Rgb([255, 255, 255]);
-    }
 
     // Goes through each pixel
     for i in 0..size_y {
@@ -165,7 +173,7 @@ fn eval_function(config: &Config) -> image::RgbImage {
                 out_rgb = hsv::hsv_to_rgb(
                     color_function(z_output).rem_euclid(360.0),
                     1.0,
-                    1.0
+                    shadow_function(z_output)
                 );
             };
             *pixel = image::Rgb([out_rgb.0, out_rgb.1, out_rgb.2]);
@@ -191,6 +199,7 @@ fn main() {
         max_i: cli_args.iterations,
         gen_formula: cli_args.formula,
         color_formula: cli_args.color,
+        shadow_formula: cli_args.shadow,
         math_frame: MathFrame {
             static_x_math_space_factor: 4.0 / (cli_args.pixels as f64 - 1.0),
             static_x_math_space_offset: 2.0,
@@ -206,7 +215,7 @@ fn main() {
         });
     }
 
-    println!("{:?}", config);
+    // println!("{:?}", config);
 
     // Sets the starting time
     let start_time = SystemTime::now()

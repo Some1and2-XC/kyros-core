@@ -13,9 +13,7 @@ use clap::CommandFactory;
 
 /// Rotational Coloring function for generation. Uses HSV rotational color. 
 fn ROTATIONAL(n: f64) -> f64 {
-
     // Gets color value
-
     return 9.0 * n;
 }
 
@@ -28,13 +26,13 @@ fn SINUSOIDAL(n: f64) -> f64 {
     let rate_of_color_change: f64 = 9.0;
 
     // 0.0174532925199 = pi / 180
-    return ((max_value - min_value) * 0.5 * (n * rate_of_color_change * 0.0174532925199).cos() +
-        (max_value + min_value) * 0.5) % 360.0;
+    return (max_value - min_value) * 0.5 * (n * rate_of_color_change * 0.0174532925199).cos() +
+        (max_value + min_value) * 0.5;
 }
 
 const COLORS: [(&str, &dyn Fn(f64) -> f64, &str);2] = [
-    ("ROTATIONAL", &ROTATIONAL, "0"),
-    ("SINUSOIDAL", &SINUSOIDAL, "0"),
+    ("ROTATIONAL", &ROTATIONAL, "Simple rotational color based on iteration value"),
+    ("SINUSOIDAL", &SINUSOIDAL, "Sinusoidal color values generated between set values"),
 ];
 
 /// Function for getting the color formula from config
@@ -56,6 +54,6 @@ pub fn get_color(color: &str) -> &dyn Fn(f64) -> f64 {
     // If not found throw error
     Args::command().error(
         ErrorKind::InvalidValue,
-        format!("Color generation method '{}' not found!\n\nAllowed Formulas:\n{}", color, color_string)
+        format!("Color generation method '{}' not found!\n\nAllowed Colors:\n{}", color, color_string)
     ).exit();
 }

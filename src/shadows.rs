@@ -1,0 +1,57 @@
+#![allow(non_snake_case)]
+
+use super::Args;
+
+use clap::error::ErrorKind;
+use clap::CommandFactory;
+
+/*
+    Author : Mark T
+      Date : 6/21/2023
+*/
+
+
+/// Rotational Coloring function for generation. Uses HSV rotational color. 
+fn none(_: f64) -> f64 {
+    // Gets color value
+    return 1.0;
+}
+
+fn minimal(n: f64) -> f64{
+    return 0.125 * (n * 9.0).cos() + 0.815;
+}
+
+fn modulus(n: f64) -> f64 {
+    let modulus_value = 3.0;
+
+    return 1.0 - (n.rem_euclid(modulus_value) / modulus_value);
+}
+
+const SHADOWS: [(&str, &dyn Fn(f64) -> f64, &str);3] = [
+    ("none"    , &none    , "\tDoesn't change values, sets all lightness values to '1'"),
+    ("minimal" , &minimal , "Adds slight variance to values based on cos wave"),
+    ("modulus" , &modulus , "Adds significant variance using a sawtooth wave"),
+];
+
+/// Function for getting the shadow formula from config
+pub fn get_shadow(shadow: &str) -> &dyn Fn(f64) -> f64 {
+
+    // Tries to find function in FORMULAS const
+    for (key, value, _) in SHADOWS.iter() {
+        if key == &shadow {
+            return value;
+        }
+    }
+
+    let shadow_string: String = SHADOWS
+        .iter()
+        .map(|v| format!("  {}\t{}", v.0, v.2))
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    // If not found throw error
+    Args::command().error(
+        ErrorKind::InvalidValue,
+        format!("Shadow generation method '{}' not found!\n\nAllowed Shadows:\n{}", shadow, shadow_string)
+    ).exit();
+}
