@@ -8,6 +8,7 @@ Author : Mark T
 mod math;
 mod color;
 mod shadows;
+mod utils;
 
 extern crate image;
 
@@ -23,15 +24,6 @@ use crate::math::structs;
 // CLI Crates
 use clap::Parser;
 
-/*
-use clap::Command;
-use clap::Arg;
-use clap::ArgAction;
-use clap::error::ErrorKind;
-use clap::CommandFactory;
-*/
-// use clap::Subcommand;
-
 /// Main object for defining generation configuration. 
 #[derive(Debug, Default)]
 struct Config {
@@ -43,6 +35,7 @@ struct Config {
     gen_formula:              String, // Specifies Formula for Generator
     color_formula:            String, // Specifies Formula for Colors
     shadow_formula:           String, // Specifies Formula for Shadows
+    travel_distance:            bool, // Speifies if the output color value should be based on travel distance
     math_frame:            MathFrame,
 }
 
@@ -99,6 +92,10 @@ struct Args {
     #[arg(short, long, default_value_t=false, value_name="BOOL")]
     julia: bool,
 
+    /// Uses Travel Distance to color pixels
+    #[arg(long, default_value_t=false, value_name="BOOL")]
+    travel_distance: bool,
+
     /// Confirm image generation
     #[arg(short, long, required(true))]
     y_confirm: bool,
@@ -108,9 +105,6 @@ struct Args {
 fn eval_function(config: &Config) -> image::RgbImage {
 
     // Unpacks Image Configuration
-    let size_x: u32 = config.size_x;
-    let size_y: u32 = config.size_y;
-    let max_i: u64 = config.max_i;
     let c_init: Option<structs::Complex> = config.c_init;
 
     let generator_function = get_formula(&config.gen_formula.as_str());
@@ -126,7 +120,8 @@ fn eval_function(config: &Config) -> image::RgbImage {
         },
         None => false,
     };
- 
+
+    // Sets Math Values
     let static_x_math_space_factor = config.math_frame.static_x_math_space_factor;
     let static_x_math_space_offset = config.math_frame.static_x_math_space_offset;
 
@@ -134,33 +129,48 @@ fn eval_function(config: &Config) -> image::RgbImage {
     let static_y_math_space_offset = config.math_frame.static_y_math_space_offset;
 
     let mut z: math::structs::Complex;
+    let mut old_z: math::structs::Complex;
 
     // Initializes Image Buffer
-    let mut img = image::ImageBuffer::new(size_x, size_y);
+    let mut img = image::ImageBuffer::new(config.size_x, config.size_y);
 
     // Goes through each pixel
-    for i in 0..size_y {
-        for j in 0..size_x {
+    for i in 0..config.size_y {
+        for j in 0..config.size_x {
 
              // Sets Initial Z Value
             z = math::structs::Complex {
                 real      : static_x_math_space_factor * j as f64 - static_x_math_space_offset,
                 imaginary : static_y_math_space_factor * i as f64 - static_y_math_space_offset,
             };
+            old_z = z;
 
             if is_julia == false { c = z; }
 
+            let mut z_output: f64 = 0.0;
+
             // Runs Math
-            let mut iteration: u64 = 0;
-            loop {
-                if iteration == max_i { break; }
+            for iteration in 0..config.max_i {
+                if iteration == config.max_i { break; }
                 if z.is_greater(2.0) { break; }
                 z = generator_function(c, z);
-                iteration += 1;
+
+                // Calculates Output
+                if !config.travel_distance {
+                    z_output += 1.0;
+                }
+                else {
+                    z_output += (
+                        (z.real - old_z.real) * (z.real - old_z.real) +
+                        (z.imaginary - old_z.imaginary) * (z.real - old_z.real)
+                    ).sqrt();
+                    old_z = z;
+                }
             };
 
-            // Sets Output Value
-            let z_output = iteration as f64;
+            if config.travel_distance {
+                
+            }
 
             // Gets pixel pointer
             let pixel = img.get_pixel_mut(j, i);
@@ -168,17 +178,17 @@ fn eval_function(config: &Config) -> image::RgbImage {
             // Sets Pixel Value
             let out_rgb: (u8, u8, u8);
             if z_output == 0.0 {out_rgb = (255, 255, 255)}
-            else if z_output == max_i as f64 {out_rgb = (0, 0, 0)}
+            else if z_output == config.max_i as f64 {out_rgb = (0, 0, 0)}
             else {
                 out_rgb = hsv::hsv_to_rgb(
                     color_function(z_output).rem_euclid(360.0),
                     1.0,
-                    shadow_function(z_output)
+                    shadow_function(z_output).rem_euclid(360.0)
                 );
             };
             *pixel = image::Rgb([out_rgb.0, out_rgb.1, out_rgb.2]);
         }
-        print!("\t {:.2}% | {} / {}\r", 100.0 * (i as f64 + 1.0) / size_y as f64, i+1, size_y);
+        print!("\t {:.2}% | {} / {}\r", 100.0 * (i as f64 + 1.0) / config.size_y as f64, i+1, config.size_y);
     }
     println!();
     return img;
@@ -200,6 +210,7 @@ fn main() {
         gen_formula: cli_args.formula,
         color_formula: cli_args.color,
         shadow_formula: cli_args.shadow,
+        travel_distance: cli_args.travel_distance,
         math_frame: MathFrame {
             static_x_math_space_factor: 4.0 / (cli_args.pixels as f64 - 1.0),
             static_x_math_space_offset: 2.0,
