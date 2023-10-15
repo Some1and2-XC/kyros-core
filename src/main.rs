@@ -251,5 +251,5 @@ fn main() {
 
     // Show Completion Message
     println!("[Finished in {:.2}s]", end_time - start_time);
-    let _ = std::io::stdin().read_line(&mut String::new());
+    // let _ = std::io::stdin().read_line(&mut String::new());
 }
