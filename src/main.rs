@@ -12,6 +12,7 @@ mod utils;
 
 extern crate image;
 
+use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::color::get_color;
@@ -43,11 +44,11 @@ struct Config {
 /// This is used to calculate where each pixel is mapped to
 #[derive(Debug, Default)]
 struct MathFrame {
-    static_x_math_space_factor: f64,
-    static_x_math_space_offset: f64,
+    x_math_space_factor: f64,
+    x_math_space_offset: f64,
 
-    static_y_math_space_factor: f64,
-    static_y_math_space_offset: f64,   
+    y_math_space_factor: f64,
+    y_math_space_offset: f64,   
 }
 
 static ABOUT_CLI_ARGS: &str = "
@@ -122,11 +123,11 @@ fn eval_function(config: &Config) -> image::RgbImage {
     };
 
     // Sets Math Values
-    let static_x_math_space_factor = config.math_frame.static_x_math_space_factor;
-    let static_x_math_space_offset = config.math_frame.static_x_math_space_offset;
+    let x_math_space_factor = config.math_frame.x_math_space_factor;
+    let x_math_space_offset = config.math_frame.x_math_space_offset;
 
-    let static_y_math_space_factor = config.math_frame.static_y_math_space_factor;
-    let static_y_math_space_offset = config.math_frame.static_y_math_space_offset;
+    let y_math_space_factor = config.math_frame.y_math_space_factor;
+    let y_math_space_offset = config.math_frame.y_math_space_offset;
 
     let mut z: math::structs::Complex;
     let mut old_z: math::structs::Complex;
@@ -140,8 +141,8 @@ fn eval_function(config: &Config) -> image::RgbImage {
 
              // Sets Initial Z Value
             z = math::structs::Complex {
-                real      : static_x_math_space_factor * j as f64 - static_x_math_space_offset,
-                imaginary : static_y_math_space_factor * i as f64 - static_y_math_space_offset,
+                real      : x_math_space_factor * j as f64 - x_math_space_offset,
+                imaginary : y_math_space_factor * i as f64 - y_math_space_offset,
             };
             old_z = z;
 
@@ -162,7 +163,7 @@ fn eval_function(config: &Config) -> image::RgbImage {
                 else {
                     z_output += (
                         (z.real - old_z.real) * (z.real - old_z.real) +
-                        (z.imaginary - old_z.imaginary) * (z.real - old_z.real)
+                        (z.imaginary - old_z.imaginary) * (z.imaginary - old_z.imaginary)
                     ).sqrt();
                     old_z = z;
                 }
@@ -198,6 +199,9 @@ fn eval_function(config: &Config) -> image::RgbImage {
 /// Main function of the program
 fn main() {
 
+    // env::set_var("RUST_BACKTRACE", "1");
+    env::set_var("RUST_BACKTRACE", "full");
+
     // Defines values from CLI arguments
     let cli_args = Args::parse();
 
@@ -212,10 +216,10 @@ fn main() {
         shadow_formula: cli_args.shadow,
         travel_distance: cli_args.travel_distance,
         math_frame: MathFrame {
-            static_x_math_space_factor: 4.0 / (cli_args.pixels as f64 - 1.0),
-            static_x_math_space_offset: 2.0,
-            static_y_math_space_factor: 4.0 / (cli_args.pixels as f64 - 1.0),
-            static_y_math_space_offset: 2.0,
+            x_math_space_factor: 4.0 / (cli_args.pixels as f64 - 1.0),
+            x_math_space_offset: 2.0,
+            y_math_space_factor: 4.0 / (cli_args.pixels as f64 - 1.0),
+            y_math_space_offset: 2.0,
         }
     };
 
