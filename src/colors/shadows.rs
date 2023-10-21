@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use super::Args;
+use super::super::Args;
 
 use clap::error::ErrorKind;
 use clap::CommandFactory;

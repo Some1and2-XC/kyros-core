@@ -5,3 +5,4 @@ Cargo.lock
 *.sublimelinterrc
 *.sublime-workspace
 *.png
+_lib.rs

@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use super::structs;
+use super::super::structs;
 use super::super::Args;
 
 use clap::error::ErrorKind;
