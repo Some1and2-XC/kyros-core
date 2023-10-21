@@ -32,7 +32,7 @@ extern crate image;
 use clap::Parser;
 
 /// Main function of the program
-pub fn main() {
+fn main() {
 
     // env::set_var("RUST_BACKTRACE", "1");
     env::set_var("RUST_BACKTRACE", "full");

@@ -23,7 +23,11 @@ const LONG_ABOUT_CLI_ARGS: &str = "
 A CLI tool for generating fractal images. 
 
 Example:
-  kyros --pixels 512 --formula R --color ROTATIONAL --shadow minimal --travel-distance -y
+  kyros --pixels 512       \
+        --formula R        \
+        --color ROTATIONAL \
+        --shadow minimal   \
+        --travel-distance -y
 
 The 'pixels' flag refers to the size of the image, (both the amount of pixels in the x & y direction.)
 The 'formula' flag refers to the formula that is used to get a value to pass to the color generation. 
