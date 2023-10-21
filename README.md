@@ -1,5 +1,5 @@
 <h1>
-    <img src="https://raw.githubusercontent.com/Some1and2-XC/Kyros-in-rust/8474631c3133c2e1b6317daa9db659940828b447/logo.svg" height="100" width="100">
+    <img src="https://raw.githubusercontent.com/Some1and2-XC/Kyros-in-rust/8474631c3133c2e1b6317daa9db659940828b447/logo.svg" height="200" width="200">
      - A Fractal Generator
 </h1>
 ## Key Features
