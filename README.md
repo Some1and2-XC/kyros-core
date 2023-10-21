@@ -1,7 +1,8 @@
 <h1>
     <img src="https://raw.githubusercontent.com/Some1and2-XC/Kyros-in-rust/8474631c3133c2e1b6317daa9db659940828b447/logo.svg" height="200" width="200">
-     - A Fractal Generator
+    - A Fractal Generator
 </h1>
+
 ## Key Features
  - Output in multiple formats (png file, output of base-64 encoded PNG, etc.)
  - Many different configuration options from generation formula, color and shadow setting and more.
@@ -23,7 +24,8 @@
     - Displays options for the --save-method flag.
  - kyros.exe --save-method B64 -y
     - Outputs a base64 encoded version of the image to stdout.
-###### And there are many more different combinations of these flags to get unique outputs.
+
+<p>And there are many more different combinations of these flags to get unique outputs.</p>
 
 ## Current Maximums
 Part of this project was to see how large of an image I could generate.
