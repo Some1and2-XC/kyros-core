@@ -10,19 +10,19 @@
  - Comprehensive error messages & help menues.
 
 ## Examples (with outputs)
- - kyros.exe -y
+ - `kyros.exe -y`
     - Generates basic mandelbrot image with reasonable defaults.
- - kyros.exe -p 1024 -y
+ - `kyros.exe -p 1024 -y`
     - Generates basic mandelbrot image with higher resolution.
- - kyros.exe -i 1024 -y
+ - `kyros.exe -i 1024 -y`
     - Generates basic mandelbrot image with more iterations per pixel.
- - kyros.exe -f HELP -y
+ - `kyros.exe -f HELP -y`
     - Shows help menu to display different options for the -f command.
- - kyros.exe -f R -y
+ - `kyros.exe -f R -y`
     - Changes the formula to generate the image with.
- - kyros.exe --save-method HELP -y
+ - `kyros.exe --save-method HELP -y`
     - Displays options for the --save-method flag.
- - kyros.exe --save-method B64 -y
+ - `kyros.exe --save-method B64 -y`
     - Outputs a base64 encoded version of the image to stdout.
 
 <p>And there are many more different combinations of these flags to get unique outputs.</p>
