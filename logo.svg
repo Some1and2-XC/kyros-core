@@ -1,0 +1,13 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+	<g>
+		<ellipse style="fill:#000000;" cx="75.738342" cy="57.146996" rx="20.486212" ry="20.95393"/>
+		<circle style="fill:#360000;" cx="-35.714287" cy="35.714287" transform="scale(-1,1)" r="35.714287"/>
+		<circle style="fill:#660000" cx="-57.142857" cy="57.142857" transform="scale(-1,1)" r="28.571428"/>
+		<circle style="fill:#7d0000;" cx="-78.571426" cy="78.571426" transform="scale(-1,1)" r="21.428572"/>
+		<text x="12.706076" y="59.577591" id="text23" transform="scale(1.0745058,0.93066039)">
+			<tspan style="font-weight:bold;font-size:26.2265px;font-family:'Arial';fill:#ffffff;" x="12.706076" y="59.577591">
+				Kyros
+			</tspan>
+		</text>
+	</g>
+</svg>

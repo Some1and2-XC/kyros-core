@@ -20,7 +20,7 @@
     - Displays options for the --save-method flag.
  - kyros.exe --save-method B64 -y
     - Outputs a base64 encoded version of the image to stdout.
-And there are many more different combinations of these flags to get unique outputs.
+###### And there are many more different combinations of these flags to get unique outputs.
 
 ## Current Maximums
 Part of this project was to see how large of an image I could generate.
