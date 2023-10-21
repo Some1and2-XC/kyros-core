@@ -12,25 +12,25 @@ use clap::CommandFactory;
 
 
 /// Rotational Coloring function for generation. Uses HSV rotational color. 
-fn none(_: f64) -> f64 {
+fn NONE(_: f64) -> f64 {
     // Gets color value
     return 1.0;
 }
 
-fn minimal(n: f64) -> f64{
+fn MINIMAL(n: f64) -> f64{
     return 0.125 * (n * 9.0).cos() + 0.815;
 }
 
-fn modulus(n: f64) -> f64 {
+fn MODULUS(n: f64) -> f64 {
     let modulus_value = 3.0;
 
     return 1.0 - (n.rem_euclid(modulus_value) / modulus_value);
 }
 
 const SHADOWS: [(&str, &dyn Fn(f64) -> f64, &str);3] = [
-    ("none"    , &none    , "\tDoesn't change values, sets all lightness values to '1'"),
-    ("minimal" , &minimal , "Adds slight variance to values based on cos wave"),
-    ("modulus" , &modulus , "Adds significant variance using a sawtooth wave"),
+    ("NONE"    , &NONE    , "\tDoesn't change values, sets all lightness values to '1'"),
+    ("MINIMAL" , &MINIMAL, "Adds slight variance to values based on cos wave"),
+    ("MODULUS" , &MODULUS , "Adds significant variance using a sawtooth wave"),
 ];
 
 /// Function for getting the shadow formula from config

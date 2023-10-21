@@ -14,7 +14,7 @@ static ABOUT_CLI_ARGS: &str = "
 A CLI tool for generating fractal images.
 
 Example:
-  kyros --pixels 512 --formula R --color ROTATIONAL --shadow minimal --travel-distance -y
+  kyros --pixels 512 --formula R --color ROTATIONAL --shadow MINIMAL --travel-distance --progress -y
 ";
 
 
@@ -23,11 +23,13 @@ const LONG_ABOUT_CLI_ARGS: &str = "
 A CLI tool for generating fractal images. 
 
 Example:
-  kyros --pixels 512       \
-        --formula R        \
-        --color ROTATIONAL \
-        --shadow minimal   \
-        --travel-distance -y
+kyros --pixels 512       \\
+      --formula R        \\
+      --color ROTATIONAL \\
+      --shadow MINIMAL   \\
+      --travel-distance  \\
+      --progress         \\
+      -y
 
 The 'pixels' flag refers to the size of the image, (both the amount of pixels in the x & y direction.)
 The 'formula' flag refers to the formula that is used to get a value to pass to the color generation. 
@@ -62,8 +64,12 @@ pub struct Args {
     pub color: String,
 
     /// Specifies shadow function to use
-    #[arg(long, default_value_t=("none".to_string()), value_name="STR")]
+    #[arg(long, default_value_t=("NONE".to_string()), value_name="STR")]
     pub shadow: String,
+
+    /// Specifies the way the file should be saved
+    #[arg(long, default_value_t=("PNG".to_string()), value_name="STR")]
+    pub save_method: String,
 
     /// Uses Julia set style generation
     #[arg(short, long, default_value_t=false, value_name="BOOL")]

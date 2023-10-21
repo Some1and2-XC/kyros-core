@@ -19,6 +19,7 @@ pub struct Config {
     pub color_formula:            String, // Specifies Formula for Colors
     pub shadow_formula:           String, // Specifies Formula for Shadows
     pub travel_distance:            bool, // Speifies if the output color value should be based on travel distance
+    pub save_method:              String, // Specifies the way the image should be saved
     pub math_frame:            MathFrame,
     pub progress:                   bool,
 }

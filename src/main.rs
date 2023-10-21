@@ -11,6 +11,7 @@ mod structs;
 mod colors;
 mod utils;
 mod cli;
+mod save;
 
 use crate::structs::{Complex, Config, MathFrame};
 use crate::cli::Args;
@@ -18,8 +19,10 @@ use crate::cli::Args;
 use crate::colors::color::get_color;
 use crate::colors::shadows::get_shadow;
 use crate::math::formula::get_formula;
+use crate::save::get_save_method;
 
 use crate::utils::eval_function;
+
 
 // std imports
 use std::env;
@@ -50,6 +53,7 @@ fn main() {
         color_formula: cli_args.color,
         shadow_formula: cli_args.shadow,
         travel_distance: cli_args.travel_distance,
+        save_method: cli_args.save_method,
         math_frame: MathFrame {
             x_math_space_factor: 4.0 / (cli_args.pixels as f64 - 1.0),
             x_math_space_offset: 2.0,
@@ -66,8 +70,6 @@ fn main() {
         });
     }
 
-    // println!("{:?}", config);
-
     // Sets the starting time
     let start_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -79,7 +81,12 @@ fn main() {
     if config.progress {
         println!("Saving File...");
     }
-    img.save(format!("out#{}.png", config.count)).unwrap();
+
+    // Saves Image
+    let save_method = get_save_method(&config.save_method.as_str());
+    let _ = save_method(img, &config).unwrap();
+
+    // img.save(format!("out#{}.png", config.count)).unwrap();
 
     // Finished Timings
     let end_time = SystemTime::now()
