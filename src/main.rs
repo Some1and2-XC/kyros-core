@@ -76,6 +76,10 @@ fn main() {
         .unwrap()
         .as_secs_f64();
 
+    // Sets the save method before generation (For ensuring this is tested before the image is
+    // generated)
+    let save_method = get_save_method(&config.save_method.as_str());
+
     // Runs Config, gets 32 byte img object
     let img = eval_function(&config);
     if config.progress {
@@ -83,7 +87,6 @@ fn main() {
     }
 
     // Saves Image
-    let save_method = get_save_method(&config.save_method.as_str());
     let _ = save_method(img, &config).unwrap();
 
     // img.save(format!("out#{}.png", config.count)).unwrap();
