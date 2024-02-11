@@ -23,7 +23,6 @@ use crate::save::get_save_method;
 
 use crate::utils::eval_function;
 
-
 // std imports
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -44,29 +43,32 @@ fn main() {
     let cli_args = Args::parse();
 
     let mut config = Config {
-        count: 0,
         c_init: None,
         size_x: cli_args.pixels,
         size_y: cli_args.pixels,
         max_i: cli_args.iterations,
         gen_formula: cli_args.formula,
         color_formula: cli_args.color,
+        rate_of_color_change: cli_args.rate_of_color_change,
         shadow_formula: cli_args.shadow,
+        background: cli_args.background,
+        rgba: cli_args.rgba,
         travel_distance: cli_args.travel_distance,
         save_method: cli_args.save_method,
+        filename: cli_args.filename,
         math_frame: MathFrame {
-            x_math_space_factor: 4.0 / (cli_args.pixels as f64 - 1.0),
-            x_math_space_offset: 2.0,
-            y_math_space_factor: 4.0 / (cli_args.pixels as f64 - 1.0),
-            y_math_space_offset: 2.0,
+            factor_x: cli_args.factor_x / (cli_args.pixels as f64 - 1.0),
+            factor_y: cli_args.factor_y / (cli_args.pixels as f64 - 1.0),
+            offset_x: cli_args.offset_x,
+            offset_y: cli_args.offset_y,
         },
         progress: cli_args.progress,
     };
 
     if cli_args.julia {
         config.c_init = Some(Complex {
-            real: 0.08004012786314796,
-            imaginary: -0.6359321976472476,
+            real: cli_args.c_init_real,
+            imaginary: cli_args.c_init_imaginary,
         });
     }
 

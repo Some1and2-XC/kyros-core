@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use super::super::Args;
+use super::super::*;
 
 use clap::error::ErrorKind;
 use clap::CommandFactory;
@@ -12,31 +12,29 @@ use clap::CommandFactory;
 
 
 /// Rotational Coloring function for generation. Uses HSV rotational color. 
-fn ROTATIONAL(n: f64) -> f64 {
+fn ROTATIONAL(n: f64, config: &Config) -> f64 {
     // Gets color value
-    return 9.0 * n;
+    return n * config.rate_of_color_change;
 }
 
 /// Sinusoidal Coloring function for generation. 
-fn SINUSOIDAL(n: f64) -> f64 {
+fn SINUSOIDAL(n: f64, config: &Config) -> f64 {
 
     let max_value: f64 = 277.0;
     let min_value: f64 = 420.0;
 
-    let rate_of_color_change: f64 = 9.0;
-
     // 0.0174532925199 = pi / 180
-    return (max_value - min_value) * 0.5 * (n * rate_of_color_change * 0.0174532925199).cos() +
+    return (max_value - min_value) * 0.5 * (n * config.rate_of_color_change* 0.0174532925199).cos() +
         (max_value + min_value) * 0.5;
 }
 
-const COLORS: [(&str, &dyn Fn(f64) -> f64, &str);2] = [
+const COLORS: [(&str, &dyn Fn(f64, &Config) -> f64, &str);2] = [
     ("ROTATIONAL", &ROTATIONAL, "Simple rotational color based on iteration value"),
     ("SINUSOIDAL", &SINUSOIDAL, "Sinusoidal color values generated between set values"),
 ];
 
 /// Function for getting the color formula from config
-pub fn get_color(color: &str) -> &dyn Fn(f64) -> f64 {
+pub fn get_color(color: &str) -> &dyn Fn(f64, &Config) -> f64 {
 
     // Tries to find function in FORMULAS const
     for (key, value, _) in COLORS.iter() {

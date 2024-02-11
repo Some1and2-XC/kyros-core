@@ -10,7 +10,6 @@ use clap::CommandFactory;
       Date : 6/21/2023
 */
 
-
 /// Rotational Coloring function for generation. Uses HSV rotational color. 
 fn NONE(_: f64) -> f64 {
     // Gets color value

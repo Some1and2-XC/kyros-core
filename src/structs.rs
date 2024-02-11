@@ -10,16 +10,19 @@ use std::ops::{ Add, Sub, Mul };
 /// Main object for defining generation configuration. 
 #[derive(Debug, Default)]
 pub struct Config {
-    pub count:                       u64, // Index of the generated image
     pub c_init:          Option<Complex>, // Initial C value for when swap_zc is used
     pub size_x:                      u32, // Sets Image Width
     pub size_y:                      u32, // Sets Image Height
     pub max_i:                       u64, // Sets Maximum Iterations for Generator
     pub gen_formula:              String, // Specifies Formula for Generator
     pub color_formula:            String, // Specifies Formula for Colors
+    pub rate_of_color_change:        f64, // Specifies the rate color changes for the color_formula
     pub shadow_formula:           String, // Specifies Formula for Shadows
+    pub background:               String, // Specifies the background to use for the image
+    pub rgba:                       bool, // Specifies if the image should be rgba or not
     pub travel_distance:            bool, // Speifies if the output color value should be based on travel distance
     pub save_method:              String, // Specifies the way the image should be saved
+    pub filename:                 String, // Specifies the filename of the image
     pub math_frame:            MathFrame,
     pub progress:                   bool,
 }
@@ -28,11 +31,11 @@ pub struct Config {
 /// This is used to calculate where each pixel is mapped to
 #[derive(Debug, Default)]
 pub struct MathFrame {
-    pub x_math_space_factor: f64,
-    pub x_math_space_offset: f64,
+    pub factor_x: f64,
+    pub factor_y: f64,
 
-    pub y_math_space_factor: f64,
-    pub y_math_space_offset: f64,   
+    pub offset_x: f64,
+    pub offset_y: f64,   
 }
 
 // Sets up Complex Struct

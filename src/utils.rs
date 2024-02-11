@@ -8,15 +8,18 @@ Author : Mark T
 
 use super::*;
 
+use image::{Rgb, ImageBuffer, Pixel};
+use crate::colors::profiles::{self, ColorProfile};
+
 /// Function for getting image from configuration and generator function. 
-pub fn eval_function(config: &Config) -> image::RgbImage {
+pub fn eval_function(config: &Config) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+
+    let color_function = get_color(&config.color_formula.as_str());
+    let shadow_function = get_shadow(&config.shadow_formula.as_str());
+    let generator_function = get_formula(&config.gen_formula.as_str());
 
     // Unpacks Image Configuration
     let c_init: Option<Complex> = config.c_init;
-
-    let generator_function = get_formula(&config.gen_formula.as_str());
-    let color_function = get_color(&config.color_formula.as_str());
-    let shadow_function = get_shadow(&config.shadow_formula.as_str());
 
     // Sets Initial 'c' Value (If set)
     let mut c = Complex { real: 0f64, imaginary: 0f64, };
@@ -29,23 +32,30 @@ pub fn eval_function(config: &Config) -> image::RgbImage {
     };
 
     // Sets Math Values
-    let x_math_space_factor = config.math_frame.x_math_space_factor;
-    let x_math_space_offset = config.math_frame.x_math_space_offset;
+    let x_math_space_factor = config.math_frame.factor_x;
+    let y_math_space_factor = config.math_frame.factor_y;
 
-    let y_math_space_factor = config.math_frame.y_math_space_factor;
-    let y_math_space_offset = config.math_frame.y_math_space_offset;
+    let x_math_space_offset = config.math_frame.offset_x;
+    let y_math_space_offset = config.math_frame.offset_y;
 
     let mut z: Complex;
     let mut old_z: Complex;
 
+    let max_i = config.max_i as f64;
+
+    let color_struct = profiles::RgbProfile {
+        foreground: Rgb([0, 0, 0]),
+        background: Rgb([255, 255, 255]),
+    };
+
     // Initializes Image Buffer
-    let mut img = image::ImageBuffer::new(config.size_x, config.size_y);
+    let mut img = ImageBuffer::new(config.size_x, config.size_y);
 
     // Goes through each pixel
     for i in 0..config.size_y {
         for j in 0..config.size_x {
 
-             // Sets Initial Z Value
+            // Sets Initial Z Value
             z = Complex {
                 real      : x_math_space_factor * j as f64 - x_math_space_offset,
                 imaginary : y_math_space_factor * i as f64 - y_math_space_offset,
@@ -78,18 +88,15 @@ pub fn eval_function(config: &Config) -> image::RgbImage {
             // Gets pixel pointer
             let pixel = img.get_pixel_mut(j, i);
 
-            // Sets Pixel Value
-            let out_rgb: (u8, u8, u8);
-            if z_output == 0.0 {out_rgb = (255, 255, 255)}
-            else if z_output == config.max_i as f64 {out_rgb = (0, 0, 0)}
-            else {
-                out_rgb = hsv::hsv_to_rgb(
-                    color_function(z_output).rem_euclid(360.0),
-                    1.0,
-                    shadow_function(z_output).rem_euclid(360.0)
-                );
+            *pixel = match z_output {
+                x if x == 0.0 => color_struct.get_background(),
+                x if x >= max_i => color_struct.get_foreground(),
+                _ => color_struct.method(
+                    color_function(z_output, &config).rem_euclid(360.0),
+                    shadow_function(z_output).rem_euclid(360.0),
+                ),
             };
-            *pixel = image::Rgb([out_rgb.0, out_rgb.1, out_rgb.2]);
+
         }
         if config.progress {
             print!("\t {:.2}% | {} / {}\r", 100.0 * (i as f64 + 1.0) / config.size_y as f64, i+1, config.size_y);
