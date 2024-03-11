@@ -41,8 +41,16 @@ pub fn eval_function(config: &Config) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     let max_i = config.max_i as f64;
 
     let color_struct = profiles::RgbProfile {
-        foreground: Rgb([0, 0, 0]),
-        background: Rgb([255, 255, 255]),
+        background: Rgb([
+            config.background.to_linear_rgba_u8().0,
+            config.background.to_linear_rgba_u8().1,
+            config.background.to_linear_rgba_u8().2,
+        ]),
+        foreground: Rgb([
+            config.foreground.to_linear_rgba_u8().0,
+            config.foreground.to_linear_rgba_u8().1,
+            config.foreground.to_linear_rgba_u8().2,
+        ]),
     };
 
     // Initializes Image Buffer

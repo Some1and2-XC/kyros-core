@@ -29,6 +29,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 // External Imports
 extern crate image;
+extern crate csscolorparser;
 
 // External Crates
 use clap::Parser;
@@ -54,8 +55,10 @@ fn main() {
         color_formula: cli_args.color,
         rate_of_color_change: cli_args.rate_of_color_change,
         shadow_formula: cli_args.shadow,
-        background: cli_args.background,
-        
+
+        background: csscolorparser::parse(&cli_args.background.as_str()).unwrap(),
+        foreground: csscolorparser::parse(&cli_args.foreground.as_str()).unwrap(),
+
         rgba: cli_args.rgba,
         travel_distance: cli_args.travel_distance,
 

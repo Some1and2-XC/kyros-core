@@ -12,6 +12,7 @@ hsv = "0.1.1"
 image = "0.24.6"
 time = "0.3.22"
 base64 = "0.21.4"
+csscolorparser = "0.6.2"
 
 # [lib]
 # crate-type=["cdylib"]

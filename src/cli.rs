@@ -66,8 +66,12 @@ pub struct Args {
     pub shadow: String,
 
     /// Specifies which color to use for the background
-    #[arg(long, default_value_t=("#000000".to_string()), value_name="STR")]
+    #[arg(long, default_value_t=("white".to_string()), value_name="STR")]
     pub background: String,
+
+    /// Specifies which color to use for the foreground
+    #[arg(long, default_value_t=("black".to_string()), value_name="STR")]
+    pub foreground: String,
 
     /// Specifies if RGBA should be used for the image
     #[arg(long, default_value_t=false, value_name="BOOL")]
