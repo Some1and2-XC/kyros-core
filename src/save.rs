@@ -10,14 +10,15 @@ use base64::{Engine as _, engine::general_purpose};
 use clap::error::ErrorKind;
 use clap::CommandFactory;
 
-use tempfile::tempfile;
-
+use image::DynamicImage;
 use image::{Rgb, Pixel, save_buffer, ColorType, ImageEncoder, ImageBuffer, PixelWithColorType, EncodableLayout};
 use image::flat::Error;
 use image::codecs::png::PngEncoder;
 
 pub trait Save {
-    fn method<P, Container>(image_buffer: ImageBuffer<P, Container>, config: &Config) -> Result<(), Error>
+    fn get_alias(&self) -> String;
+    fn get_description(&self) -> String;
+    fn method<P, Container>(&self, image_buffer: ImageBuffer<P, Container>, config: &Config) -> Result<(), Error>
     where
         P: Pixel<Subpixel = u8>,
         P: PixelWithColorType,
@@ -25,10 +26,12 @@ pub trait Save {
         Container: Deref<Target = [P::Subpixel]>;
 }
 
-pub struct PNG {}
+pub struct PNG_N {}
 
-impl Save for PNG {
-    fn method<P, Container>(image_buffer: ImageBuffer<P, Container>, config: &Config) -> Result<(), Error> 
+impl Save for PNG_N {
+    fn get_alias(&self) -> String { "PNG".into() }
+    fn get_description(&self) -> String { "PNG".into() }
+    fn method<P, Container>(&self, image_buffer: ImageBuffer<P, Container>, config: &Config) -> Result<(), Error> 
     where
         P: Pixel,
         P: PixelWithColorType,
@@ -41,10 +44,12 @@ impl Save for PNG {
     }
 }
 
-pub struct B64 {}
+pub struct B64_N {}
 
-impl Save for B64 {
-    fn method<P, Container>(image_buffer: ImageBuffer<P, Container>, _config: &Config) -> Result<(), Error> 
+impl Save for B64_N {
+    fn get_alias(&self) -> String { "B64".into() }
+    fn get_description(&self) -> String { "B64".into() }
+    fn method<P, Container>(&self, image_buffer: ImageBuffer<P, Container>, _config: &Config) -> Result<(), Error> 
     where
         P: Pixel<Subpixel = u8>,
         P: PixelWithColorType,
@@ -67,6 +72,11 @@ impl Save for B64 {
         print!("{}", b64);
         Ok(())
     }
+}
+
+enum Saves {
+    PNG_N,
+    B64_N,
 }
 
 fn PNG(image_buffer: ImageBuffer<Rgb<u8>, Vec<u8>>, config: &Config) -> Result<(), Error> {
@@ -95,6 +105,46 @@ const SAVE_METHODS: [(&str, &dyn Fn(ImageBuffer<Rgb<u8>, Vec<u8>>, &Config) -> R
     ("PNG", &PNG, "Saves Image as PNG."),
     ("B64", &B64, "Sends base-64 encoded PNG image to std-out."),
 ];
+
+struct Methods<T> where T: Save, {
+    pub method_list: Vec<T>,
+}
+
+impl<T> Methods<T> where T: Save {
+    pub fn show(&self) -> String {
+        self.method_list
+            .iter()
+            .map(|v| format!("  {}\t{}", v.get_alias(), v.get_alias()))
+            .collect::<Vec<String>>()
+            .join("\n")
+    }
+}
+
+pub fn get_new_save_method(save_method: &str) -> impl Save {
+
+    let methods = [
+        Saves::PNG_N,
+        Saves::B64_N,
+    ];
+
+    for method in methods {
+        if method.get_alias() == save_method.to_string() {
+            return method
+        }
+    }
+
+    let saves_string: String = SAVE_METHODS
+        .iter()
+        .map(|v| format!("  {}\t{}", v.0, v.2))
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    // If not found throw error
+    Args::command().error(
+        ErrorKind::InvalidValue,
+        format!("Save method '{}' not found!\n\nAllowed save methods:\n{}", save_method, saves_string)
+    ).exit();
+}
 
 /// Function for getting the method for saving images from config
 pub fn get_save_method(save_method: &str) -> &dyn Fn(ImageBuffer<Rgb<u8>, Vec<u8>>, &Config) -> Result<(), Error> {
