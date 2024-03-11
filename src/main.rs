@@ -89,7 +89,7 @@ fn main() {
     }
 
     // Saves Image
-    let _ = save_method(img, &config).unwrap();
+    let _ = save_method.method(image::DynamicImage::ImageRgb8(img), &config).unwrap();
 
     // img.save(format!("out#{}.png", config.count)).unwrap();
 

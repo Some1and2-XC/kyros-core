@@ -8,7 +8,7 @@ Author : Mark T
 
 use super::*;
 
-use image::{Rgb, ImageBuffer, Pixel};
+use image::{Rgb, ImageBuffer};
 use crate::colors::profiles::{self, ColorProfile};
 
 /// Function for getting image from configuration and generator function. 
