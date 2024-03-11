@@ -31,12 +31,6 @@ kyros --pixels 512       \\
       --progress         \\
       -y
 
-The 'pixels' flag refers to the size of the image, (both the amount of pixels in the x & y direction.)
-The 'formula' flag refers to the formula that is used to get a value to pass to the color generation. 
-The 'color' flag refers to the formula that generates a hue value.
-The 'shadow' flag refers to the formula that generates the light / dark value of each pixel.
-The 'travel-distance' flag changes the measurement of the generator to instead of measuring iterations, measuring mathematical travel distance.
-
 Getting more help:
 Potential values for the formula, color and shadow flags can be retreived by passing an invalid values (such as 'HELP') to them.
 ";
@@ -93,11 +87,11 @@ pub struct Args {
 
     /// Sets initial real value for julia generation
     #[arg(long, default_value_t=0.08004012786314796, value_name="FLOAT")]
-    pub c_init_real: f64,
+    pub c_real: f64,
 
     /// Sets initial imaginary value for julia generation
     #[arg(long, default_value_t=-0.6359321976472476, value_name="FLOAT")]
-    pub c_init_imaginary: f64,
+    pub c_imaginary: f64,
 
     /// Sets the image factor for x
     #[arg(long, default_value_t=4.0, value_name="FLOAT")]

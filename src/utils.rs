@@ -18,12 +18,9 @@ pub fn eval_function(config: &Config) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     let shadow_function = get_shadow(&config.shadow_formula.as_str());
     let generator_function = get_formula(&config.gen_formula.as_str());
 
-    // Unpacks Image Configuration
-    let c_init: Option<Complex> = config.c_init;
-
     // Sets Initial 'c' Value (If set)
     let mut c = Complex { real: 0f64, imaginary: 0f64, };
-    let is_julia: bool = match c_init {
+    let is_julia: bool = match config.c_init {
         Some(value) => {
             c = value;
             true

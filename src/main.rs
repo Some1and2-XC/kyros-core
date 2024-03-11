@@ -44,18 +44,24 @@ fn main() {
 
     let mut config = Config {
         c_init: None,
+
         size_x: cli_args.pixels,
         size_y: cli_args.pixels,
+
         max_i: cli_args.iterations,
+
         gen_formula: cli_args.formula,
         color_formula: cli_args.color,
         rate_of_color_change: cli_args.rate_of_color_change,
         shadow_formula: cli_args.shadow,
         background: cli_args.background,
+        
         rgba: cli_args.rgba,
         travel_distance: cli_args.travel_distance,
+
         save_method: cli_args.save_method,
         filename: cli_args.filename,
+
         math_frame: MathFrame {
             factor_x: cli_args.factor_x / (cli_args.pixels as f64 - 1.0),
             factor_y: cli_args.factor_y / (cli_args.pixels as f64 - 1.0),
@@ -67,8 +73,8 @@ fn main() {
 
     if cli_args.julia {
         config.c_init = Some(Complex {
-            real: cli_args.c_init_real,
-            imaginary: cli_args.c_init_imaginary,
+            real: cli_args.c_real,
+            imaginary: cli_args.c_imaginary,
         });
     }
 
