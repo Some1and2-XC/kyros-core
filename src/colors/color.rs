@@ -24,7 +24,7 @@ fn SINUSOIDAL(n: f64, config: &Config) -> f64 {
     let min_value: f64 = 420.0;
 
     // 0.0174532925199 = pi / 180
-    return (max_value - min_value) * 0.5 * (n * config.rate_of_color_change* 0.0174532925199).cos() +
+    return (max_value - min_value) * 0.5 * (n * config.rate_of_color_change * 0.0174532925199).cos() +
         (max_value + min_value) * 0.5;
 }
 
