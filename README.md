@@ -7,7 +7,8 @@
  - Output in multiple formats (png file, output of base-64 encoded PNG, etc.)
  - Many different configuration options from generation formula, color and shadow setting and more.
  - Toggle enabling stdout progress reporting.
- - Comprehensive error messages & help menues.
+ - Comprehensive error messages & help menus.
+ - Configuration for background & foreground color.
 
 ## Examples (with outputs)
  - `kyros.exe -y`
