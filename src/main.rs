@@ -13,7 +13,7 @@ mod utils;
 mod cli;
 mod save;
 
-use crate::structs::{PixelType, Complex, Config, MathFrame};
+use crate::structs::{Complex, Config, MathFrame};
 use crate::cli::Args;
 
 use crate::colors::color::get_color;
