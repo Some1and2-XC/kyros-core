@@ -59,7 +59,7 @@ fn main() {
         background: csscolorparser::parse(&cli_args.background.as_str()).unwrap(),
         foreground: csscolorparser::parse(&cli_args.foreground.as_str()).unwrap(),
 
-        rgba: cli_args.rgba,
+        // rgba: cli_args.rgba,
         travel_distance: cli_args.travel_distance,
 
         save_method: cli_args.save_method,

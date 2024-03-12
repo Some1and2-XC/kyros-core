@@ -73,9 +73,11 @@ pub struct Args {
     #[arg(long, default_value_t=("black".to_string()), value_name="STR")]
     pub foreground: String,
 
+    /*
     /// Specifies if RGBA should be used for the image
     #[arg(long, default_value_t=false, value_name="BOOL")]
     pub rgba: bool,
+    */
 
     /// Specifies the way the file should be saved
     #[arg(long, default_value_t=("PNG".to_string()), value_name="STR")]
