@@ -6,7 +6,9 @@ File for containing the logic for the Complex Struct
 */
 
 extern crate csscolorparser;
-use std::ops::{ Add, Sub, Mul };
+
+use std::ops::{ Add, Sub, Mul};
+use image::{Rgb, Rgba};
 
 /// Main object for defining generation configuration. 
 #[derive(Debug, Default)]

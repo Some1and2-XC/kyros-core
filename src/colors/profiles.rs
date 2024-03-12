@@ -1,5 +1,6 @@
 #[allow(unused_variables)]
 
+use super::super::*;
 use image::{Rgb, Rgba};
 use hsv;
 
@@ -45,4 +46,50 @@ impl ColorProfile<Rgba<u8>> for RgbaProfile {
 
         Rgba([pixel.0, pixel.1, pixel.2, 0])
     }
+}
+
+pub fn get_profile(config: &Config) -> Box<dyn ColorProfile<Rgb<u8>>> {
+
+    let background = config.background.to_linear_rgba_u8();
+    let foreground = config.foreground.to_linear_rgba_u8();
+
+    return Box::new(
+        RgbProfile{
+            background: Rgb([
+                background.0,
+                background.1,
+                background.2,
+            ]),
+            foreground: Rgb([
+                foreground.0,
+                foreground.1,
+                foreground.2,
+            ]),
+        }
+    );
+
+    // Some shenanigans need to take place for this to work
+    /*
+    if config.rgba {
+        return &RgbaProfile{
+            background: PixelType::Rgba8(Rgba(background.into())),
+            foreground: PixelType::Rgba8(Rgba(foreground.into())),
+        };
+    }
+
+    else {
+        return &RgbProfile{
+            background: PixelType::Rgb8(Rgb([
+                background.0,
+                background.1,
+                background.2,
+            ])),
+            foreground: PixelType::Rgb8(Rgb([
+                foreground.0,
+                foreground.1,
+                foreground.2,
+            ])),
+        };
+    }
+    */
 }

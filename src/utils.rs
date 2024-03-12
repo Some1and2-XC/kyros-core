@@ -9,7 +9,7 @@ Author : Mark T
 use super::*;
 
 use image::{Rgb, ImageBuffer};
-use crate::colors::profiles::{self, ColorProfile};
+use crate::colors::profiles::get_profile;
 
 /// Function for getting image from configuration and generator function. 
 pub fn eval_function(config: &Config) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
@@ -40,18 +40,7 @@ pub fn eval_function(config: &Config) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
 
     let max_i = config.max_i as f64;
 
-    let color_struct = profiles::RgbProfile {
-        background: Rgb([
-            config.background.to_linear_rgba_u8().0,
-            config.background.to_linear_rgba_u8().1,
-            config.background.to_linear_rgba_u8().2,
-        ]),
-        foreground: Rgb([
-            config.foreground.to_linear_rgba_u8().0,
-            config.foreground.to_linear_rgba_u8().1,
-            config.foreground.to_linear_rgba_u8().2,
-        ]),
-    };
+    let color_profile = get_profile(&config);
 
     // Initializes Image Buffer
     let mut img = ImageBuffer::new(config.size_x, config.size_y);
@@ -91,16 +80,24 @@ pub fn eval_function(config: &Config) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
             };
 
             // Gets pixel pointer
-            let pixel = img.get_pixel_mut(j, i);
+            img.put_pixel(j, i,
+                match z_output {
+                    x if x == 0.0 => color_profile.get_background(),
+                    x if x >= max_i => color_profile.get_foreground(),
+                    _ => color_profile.method(
+                        color_function(z_output, &config).rem_euclid(360.0),
+                        shadow_function(z_output).rem_euclid(360.0),
+                    ),
+                }
+            );
 
-            *pixel = match z_output {
-                x if x == 0.0 => color_struct.get_background(),
-                x if x >= max_i => color_struct.get_foreground(),
-                _ => color_struct.method(
-                    color_function(z_output, &config).rem_euclid(360.0),
-                    shadow_function(z_output).rem_euclid(360.0),
-                ),
+            // The problem with this is that I can't pinky promise the data will fit in the pointer
+            /*
+            *pixel = match data {
+                PixelType::Rgba8(v) => v,
+                PixelType::Rgb8(v) => v,
             };
+            */
 
         }
         if config.progress {
