@@ -83,7 +83,7 @@ pub fn eval_function(config: &Config) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
             img.put_pixel(j, i,
                 match z_output {
                     x if x == 0.0 => color_profile.get_background(),
-                    x if x >= max_i => color_profile.get_foreground(),
+                    x if (x >= max_i && !config.travel_distance) => color_profile.get_foreground(),
                     _ => color_profile.method(
                         color_function(z_output, &config).rem_euclid(360.0),
                         shadow_function(z_output).rem_euclid(360.0),
