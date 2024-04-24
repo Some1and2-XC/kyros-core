@@ -33,7 +33,6 @@ extern crate csscolorparser;
 
 // External Crates
 use clap::Parser;
-use image::{DynamicImage, ImageBuffer, Pixel, Rgb, Rgba};
 
 /// Main function of the program
 fn main() {

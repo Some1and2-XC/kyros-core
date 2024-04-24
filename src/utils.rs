@@ -6,8 +6,6 @@ Author : Mark T
   File for general utilities
 */
 
-use std::io::Read;
-
 use super::*;
 
 use crate::colors::profiles::get_profile;
