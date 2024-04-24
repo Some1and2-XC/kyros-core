@@ -12,6 +12,7 @@ mod colors;
 mod utils;
 mod cli;
 mod save;
+mod gpu;
 
 use crate::structs::{Complex, Config, MathFrame};
 use crate::cli::Args;
@@ -21,21 +22,44 @@ use crate::colors::shadows::get_shadow;
 use crate::math::formula::get_formula;
 use crate::save::get_save_method;
 
-use crate::utils::eval_function;
-
 // std imports
 use std::env;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 // External Imports
 extern crate image;
 extern crate csscolorparser;
+extern crate log;
+
+use log::{Level, LevelFilter, Metadata, Record};
 
 // External Crates
 use clap::Parser;
 
+static LOGGER: Logger = Logger;
+
+struct Logger;
+
+impl log::Log for Logger {
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() <= Level::Info
+    }
+
+    fn log(&self, record: &Record) {
+        if self.enabled(record.metadata()) {
+            println!("{} - {}", record.level(), record.args());
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+
 /// Main function of the program
 fn main() {
+
+    log::set_logger(&LOGGER).unwrap();
+    log::set_max_level(LevelFilter::Info);
 
     // env::set_var("RUST_BACKTRACE", "1");
     env::set_var("RUST_BACKTRACE", "full");
@@ -65,7 +89,7 @@ fn main() {
         save_method: cli_args.save_method,
         filename: cli_args.filename,
 
-        rgba: cli_args.rgba,
+        rgba: cli_args.rgba | cli_args.gpu,
         gpu: cli_args.gpu,
 
         math_frame: MathFrame {
@@ -84,37 +108,17 @@ fn main() {
         });
     }
 
-    // Sets the starting time
-    let start_time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs_f64();
+    let now = Instant::now();
 
     // Sets the save method before generation (For ensuring this is tested before the image is
     // generated)
-    let save_method = get_save_method(&config.save_method.as_str());
 
     // Runs Config, gets 32 byte img object
-    let img = eval_function(&config);
-
-    if config.progress {
-        println!("Saving File...");
-    }
-
-    // Saves Image
-    let _ = save_method.method(img, &config).unwrap();
-
-    // img.save(format!("out#{}.png", config.count)).unwrap();
-
-    // Finished Timings
-    let end_time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs_f64();
+    let _ = match config.gpu {
+        true => utils::gpu_eval(&config),
+        false => utils::cpu_eval(&config),
+    };
 
     // Show Completion Message
-    if config.progress {
-        println!("[Finished in {:.2}s]", end_time - start_time);
-    }
-    // let _ = std::io::stdin().read_line(&mut String::new());
+    log::info!("[Finished in {:.2?}]", now.elapsed());
 }

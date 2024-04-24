@@ -12,65 +12,109 @@ This section of the code is for defining the different functions that are used
 to generate images. This is the function that gets run on each pixel. 
 */
 
-
-fn SD(c: structs::Complex, z: structs::Complex) -> structs::Complex {
-    return z * z + c;
+pub trait Formula {
+    fn get_alias(&self) -> String;
+    fn get_description(&self) -> String;
+    fn method(&self, c: structs::Complex, z: structs::Complex) -> structs::Complex;
+    fn gpu_method(&self) -> String;
 }
 
-fn R(c: structs::Complex, z: structs::Complex) -> structs::Complex {
-    let mut new_z = z * z + c;
-    new_z.imaginary -= z.real;
-    new_z.real -= z.imaginary;
-    return new_z;
-}
-
-fn ABR(c: structs::Complex, z: structs::Complex) -> structs::Complex {
-    let mut new_z = z * z;
-    if new_z.imaginary < 0.0 {
-        new_z.imaginary *= -1.0;
+struct SD {}
+impl Formula for SD {
+    fn get_alias(&self) -> String { "SD".into() }
+    fn get_description(&self) -> String { "Standard z = z^2 + c".into() }
+    fn method(&self, c: structs::Complex, z: structs::Complex) -> structs::Complex {
+        z * z + c
     }
-    new_z.imaginary -= z.real;
-    new_z.real -= z.imaginary;
-    return new_z + c;
-}
-
-fn BS(c: structs::Complex, mut z: structs::Complex) -> structs::Complex {
-    z = z * z;
-    if z.imaginary > 0.0 {
-        z.imaginary = z.imaginary * -1.0;
+    fn gpu_method(&self) -> String {
+        "
+        add(mult(z, z), c)
+        ".trim().into()
     }
-    return z + c;
 }
 
-fn SYM(c: structs::Complex, z: structs::Complex) -> structs::Complex {
-    return z * z + c - z;
+struct R {}
+impl Formula for R {
+    fn get_alias(&self) -> String { "R".into() }
+    fn get_description(&self) -> String { "Custom Rabbit Generator".into() }
+    fn method(&self, c: structs::Complex, z: structs::Complex) -> structs::Complex {
+        let mut new_z = z * z + c;
+        new_z.imaginary -= z.real;
+        new_z.real -= z.imaginary;
+        return new_z;
+    }
+    fn gpu_method(&self) -> String {
+        "z".into()
+    }
 }
 
-/// Sets Bootleg hashmap for formulas
-///   FORMULAS.0 == Key Value
-///   FORMULAS.1 == Function Value
-///   FORMULAS.2 == Documentation Value
-const FORMULAS: [(&str, &dyn Fn(structs::Complex, structs::Complex) -> structs::Complex, &str);5] = [
-    ("SD"  , &SD  , "Standard z = z^2 + c"),
-    ("R"   , &R   , "Custom Rabbit Generator"),
-    ("ABR" , &ABR , "Absolute Value Rabbit Generator"),
-    ("BS"  , &BS  , "Burning Ship Generator"),
-    ("SYM" , &SYM , "A Symetrical Mandelbrot Like Generation"),
-];
+struct ABR {}
+impl Formula for ABR {
+    fn get_alias(&self) -> String { "ABR".into() }
+    fn get_description(&self) -> String { "Absolute Value Rabbit Generator".into() }
+    fn method(&self, c: structs::Complex, z: structs::Complex) -> structs::Complex {
+        let mut new_z = z * z;
+        if new_z.imaginary < 0.0 {
+            new_z.imaginary *= -1.0;
+        }
+        new_z.imaginary -= z.real;
+        new_z.real -= z.imaginary;
+        return new_z + c;
+    }
+    fn gpu_method(&self) -> String {
+        "z".into()
+    }
+}
+
+struct BS {}
+impl Formula for BS {
+    fn get_alias(&self) -> String { "BS".into() }
+    fn get_description(&self) -> String { "Burning Ship Generator".into() }
+    fn method(&self, c: structs::Complex, mut z: structs::Complex) -> structs::Complex {
+        z = z * z;
+        if z.imaginary > 0.0 {
+            z.imaginary = z.imaginary * -1.0;
+        }
+        return z + c;
+    }
+    fn gpu_method(&self) -> String {
+        "z".into()
+    }
+}
+
+struct SYM {}
+impl Formula for SYM {
+    fn get_alias(&self) -> String { "SYM".into() }
+    fn get_description(&self) -> String { "A Symetrical Mandelbrot Like Generation".into() }
+    fn method(&self, c: structs::Complex, z: structs::Complex) -> structs::Complex {
+        z * z + c - z
+    }
+    fn gpu_method(&self) -> String {
+        "z".into()
+    }
+}
 
 /// Function for getting generator formula from FORMULAS const
-pub fn get_formula(formula: &str) -> &dyn Fn(structs::Complex, structs::Complex) -> structs::Complex {
+pub fn get_formula(formula: &str) -> &dyn Formula {
+
+    let formulas: Vec<&dyn Formula> = vec![
+        &SD  {},
+        &R   {},
+        &ABR {},
+        &BS  {},
+        &SYM {},
+    ];
 
     // Tries to find function in FORMULAS const
-    for (key, value, _) in FORMULAS.iter() {
-        if key == &formula {
-            return value;
+    for method in formulas.clone() {
+        if method.get_alias() == formula.to_string() {
+            return method;
         }
     }
 
-    let formula_string: String = FORMULAS
+    let formula_string: String = formulas
         .iter()
-        .map(|v| format!("  {}\t{}", v.0, v.2))
+        .map(|v| format!("  {}\t{}", v.get_alias(), v.get_description()))
         .collect::<Vec<String>>()
         .join("\n");
 

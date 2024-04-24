@@ -1,17 +1,21 @@
-
 /*
-Author : Mark T
-  Date : 10/17/2023
-
   File for general utilities
 */
 
-use super::*;
+extern crate minijinja;
 
+use minijinja::{context, Environment};
+
+use super::*;
+use std::error::Error;
+use std::str;
+use crate::gpu::run_glsl;
 use crate::colors::profiles::get_profile;
 
 /// Function for getting image from configuration and generator function. 
-pub fn eval_function(config: &Config) -> Vec<u8> {
+pub fn cpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
+
+    let save_method = get_save_method(config.save_method.as_str());
 
     let color_function = get_color(&config.color_formula.as_str());
     let shadow_function = get_shadow(&config.shadow_formula.as_str());
@@ -64,7 +68,7 @@ pub fn eval_function(config: &Config) -> Vec<u8> {
             for iteration in 0..config.max_i {
                 if iteration == config.max_i { break; }
                 if z.is_greater(2.0) { break; }
-                z = generator_function(c, z);
+                z = generator_function.method(c, z);
 
                 // Calculates Output
                 if !config.travel_distance {
@@ -79,8 +83,7 @@ pub fn eval_function(config: &Config) -> Vec<u8> {
                 }
             };
 
-            // Gets pixel pointer
-            // img.put_pixel(j, i,
+            // Adds a pixel
             img.extend(
                 {
                     let out = match z_output {
@@ -92,8 +95,6 @@ pub fn eval_function(config: &Config) -> Vec<u8> {
                         ),
                     };
                     out[0..(3 + config.rgba as usize)].to_owned().iter()
-                    // out.truncate(3 + config.rgba as usize);
-                    // out.to_owned()
                 }
             );
         }
@@ -105,6 +106,48 @@ pub fn eval_function(config: &Config) -> Vec<u8> {
         println!();
     }
 
-    return img;
+    return save_method.method(img.as_slice(), config);
 }
 
+static TEMPLATE: &str = include_str!(
+    concat!(env!("CARGO_MANIFEST_DIR"), "/comp.glsl")
+);
+
+pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
+
+    let color_function = get_color(&config.color_formula.as_str());
+    let shadow_function = get_shadow(&config.shadow_formula.as_str());
+    let generator_function = get_formula(&config.gen_formula.as_str());
+
+    let mut c = Complex { real: 0f64, imaginary: 0f64, };
+    let is_julia: bool = match config.c_init {
+        Some(value) => {
+            c = value;
+            true
+        },
+        None => false,
+    };
+
+    let max_i = config.max_i as f64;
+    let color_profile = get_profile(&config);
+
+    let compiled_shader = {
+        let mut env = Environment::new();
+        env.add_template(
+            "compute_shader",
+            TEMPLATE
+            ).unwrap();
+        let compute_shader = env.get_template("compute_shader").unwrap();
+
+        compute_shader.render(context!(
+            formula => generator_function.gpu_method()
+            ))
+            .unwrap()
+            .replace("\\n", "\n")
+            .replace("\\t", "\t")
+            .replace("\\r", "\r")
+    };
+
+    log::debug!("{}", compiled_shader);
+    return run_glsl(compiled_shader, config);
+}

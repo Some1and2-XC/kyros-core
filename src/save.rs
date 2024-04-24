@@ -19,7 +19,7 @@ use image::codecs::png::PngEncoder;
 pub trait Save {
     fn get_alias(&self) -> String;
     fn get_description(&self) -> String;
-    fn method(&self, image_buffer: Vec<u8>, config: &Config) -> Result<(), Box<dyn Error>>;
+    fn method(&self, image_buffer: &[u8], config: &Config) -> Result<(), Box<dyn Error>>;
 }
 
 pub struct PNG {}
@@ -27,14 +27,14 @@ pub struct PNG {}
 impl Save for PNG {
     fn get_alias(&self) -> String { "PNG".into() }
     fn get_description(&self) -> String { "Saves Image as PNG.".into() }
-    fn method(&self, image_buffer: Vec<u8>, config: &Config) -> Result<(), Box<dyn Error>> {
+    fn method(&self, image_buffer: &[u8], config: &Config) -> Result<(), Box<dyn Error>> {
         // save_buffer(format!("{}.png", config.filename), image_buffer, image_buffer.width(), image_buffer.height());
 
         let mut png_buf = Vec::new();
         {
             let encoder = PngEncoder::new(&mut png_buf);
             let _ = encoder.write_image(
-                image_buffer.as_slice(),
+                image_buffer,
                 config.size_x,
                 config.size_y,
                 match config.rgba {
@@ -57,13 +57,13 @@ pub struct B64 {}
 impl Save for B64 {
     fn get_alias(&self) -> String { "B64".into() }
     fn get_description(&self) -> String { "Sends base-64 encoded PNG image to std-out.".into() }
-    fn method(&self, image_buffer: Vec<u8>, config: &Config) -> Result<(), Box<dyn Error>> {
+    fn method(&self, image_buffer: &[u8], config: &Config) -> Result<(), Box<dyn Error>> {
         let mut png_buf = Vec::new();
         {
             let encoder = PngEncoder::new(&mut png_buf);
 
             let _ = encoder.write_image(
-                image_buffer.as_slice(),
+                image_buffer,
                 config.size_x,
                 config.size_y,
                 match config.rgba {
