@@ -22,8 +22,9 @@ pub struct Config {
     pub shadow_formula:           String, // Specifies Formula for Shadows
     pub background:csscolorparser::Color, // Specifies the background to use for the image
     pub foreground:csscolorparser::Color, // Specifies the foreground to use for the image
-    // pub rgba:                       bool, // Specifies if the image should be rgba or not
     pub travel_distance:            bool, // Speifies if the output color value should be based on travel distance
+    pub rgba:                       bool, // Specifies if the image should be rgba or not
+    pub gpu:                        bool, // Speifies if image should be generated on the GPU
     pub save_method:              String, // Specifies the way the image should be saved
     pub filename:                 String, // Specifies the filename of the image
     pub math_frame:            MathFrame,

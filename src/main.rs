@@ -33,6 +33,7 @@ extern crate csscolorparser;
 
 // External Crates
 use clap::Parser;
+use image::{DynamicImage, ImageBuffer, Pixel, Rgb, Rgba};
 
 /// Main function of the program
 fn main() {
@@ -65,6 +66,9 @@ fn main() {
         save_method: cli_args.save_method,
         filename: cli_args.filename,
 
+        rgba: cli_args.rgba,
+        gpu: cli_args.gpu,
+
         math_frame: MathFrame {
             factor_x: cli_args.factor_x / (cli_args.pixels as f64 - 1.0),
             factor_y: cli_args.factor_y / (cli_args.pixels as f64 - 1.0),
@@ -93,12 +97,13 @@ fn main() {
 
     // Runs Config, gets 32 byte img object
     let img = eval_function(&config);
+
     if config.progress {
         println!("Saving File...");
     }
 
     // Saves Image
-    let _ = save_method.method(image::DynamicImage::ImageRgb8(img), &config).unwrap();
+    let _ = save_method.method(img, &config).unwrap();
 
     // img.save(format!("out#{}.png", config.count)).unwrap();
 

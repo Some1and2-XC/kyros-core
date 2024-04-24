@@ -6,13 +6,14 @@ Author : Mark T
   File for general utilities
 */
 
+use std::io::Read;
+
 use super::*;
 
-use image::{Rgb, ImageBuffer};
 use crate::colors::profiles::get_profile;
 
 /// Function for getting image from configuration and generator function. 
-pub fn eval_function(config: &Config) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
+pub fn eval_function(config: &Config) -> Vec<u8> {
 
     let color_function = get_color(&config.color_formula.as_str());
     let shadow_function = get_shadow(&config.shadow_formula.as_str());
@@ -43,7 +44,8 @@ pub fn eval_function(config: &Config) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     let color_profile = get_profile(&config);
 
     // Initializes Image Buffer
-    let mut img = ImageBuffer::new(config.size_x, config.size_y);
+    // let mut img = ImageBuffer::new(config.size_x, config.size_y);
+    let mut img: Vec<u8> = Vec::with_capacity((config.size_x * config.size_y) as usize);
 
     // Goes through each pixel
     for i in 0..config.size_y {
@@ -51,8 +53,8 @@ pub fn eval_function(config: &Config) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
 
             // Sets Initial Z Value
             z = Complex {
-                real      : x_math_space_factor * j as f64 - x_math_space_offset,
-                imaginary : y_math_space_factor * i as f64 - y_math_space_offset,
+                real      : x_math_space_factor * j as f64 + x_math_space_offset,
+                imaginary : y_math_space_factor * i as f64 + y_math_space_offset,
             };
             old_z = z;
 
@@ -80,25 +82,22 @@ pub fn eval_function(config: &Config) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
             };
 
             // Gets pixel pointer
-            img.put_pixel(j, i,
-                match z_output {
-                    x if x == 0.0 => color_profile.get_background(),
-                    x if (x >= max_i && !config.travel_distance) => color_profile.get_foreground(),
-                    _ => color_profile.method(
-                        color_function(z_output, &config).rem_euclid(360.0),
-                        shadow_function(z_output).rem_euclid(360.0),
-                    ),
+            // img.put_pixel(j, i,
+            img.extend(
+                {
+                    let out = match z_output {
+                        x if x == 0.0 => color_profile.get_background().to_owned(),
+                        x if (x >= max_i && !config.travel_distance) => color_profile.get_foreground().to_owned(),
+                        _ => color_profile.method(
+                            color_function(z_output, &config).rem_euclid(360.0),
+                            shadow_function(z_output).rem_euclid(360.0),
+                        ),
+                    };
+                    out[0..(3 + config.rgba as usize)].to_owned().iter()
+                    // out.truncate(3 + config.rgba as usize);
+                    // out.to_owned()
                 }
             );
-
-            // The problem with this is that I can't pinky promise the data will fit in the pointer
-            /*
-            *pixel = match data {
-                PixelType::Rgba8(v) => v,
-                PixelType::Rgb8(v) => v,
-            };
-            */
-
         }
         if config.progress {
             print!("\t {:.2}% | {} / {}\r", 100.0 * (i as f64 + 1.0) / config.size_y as f64, i+1, config.size_y);
@@ -107,6 +106,7 @@ pub fn eval_function(config: &Config) -> ImageBuffer<Rgb<u8>, Vec<u8>> {
     if config.progress {
         println!();
     }
+
     return img;
 }
 
