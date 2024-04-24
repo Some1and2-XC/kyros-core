@@ -28,7 +28,7 @@ impl Formula for SD {
     }
     fn gpu_method(&self) -> String {
         "
-        add(mult(z, z), c)
+        z = add(mult(z, z), c);
         ".trim().into()
     }
 }
@@ -44,7 +44,12 @@ impl Formula for R {
         return new_z;
     }
     fn gpu_method(&self) -> String {
-        "z".into()
+        "
+        z = add(mult(z, z), c);
+        float tmp = z.data.y;
+        z.data.y -= z.data.x;
+        z.data.x -= tmp;
+        ".trim().into()
     }
 }
 
@@ -62,7 +67,15 @@ impl Formula for ABR {
         return new_z + c;
     }
     fn gpu_method(&self) -> String {
-        "z".into()
+        "
+        z = mult(z, z);
+        if (z.data.y < 0.0) {
+            z.data.y *= -1.0;
+        }
+        z.data.y -= z.data.x;
+        z.data.x -= z.data.y + z.data.x;
+        z.data += c.data;
+        ".trim().into()
     }
 }
 
@@ -78,7 +91,13 @@ impl Formula for BS {
         return z + c;
     }
     fn gpu_method(&self) -> String {
-        "z".into()
+        "
+        z = mult(z, z);
+        if (z.data.y > 0.0) {
+            z.data.y *= -1.0;
+        }
+        z.data += c.data;
+        ".trim().into()
     }
 }
 
@@ -90,7 +109,14 @@ impl Formula for SYM {
         z * z + c - z
     }
     fn gpu_method(&self) -> String {
-        "z".into()
+        "
+        z = add(
+            add(mult(z, z), c),
+            Complex(
+                -z.data
+            )
+        );
+        ".trim().into()
     }
 }
 

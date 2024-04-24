@@ -13,6 +13,10 @@ image = "0.24.6"
 time = "0.3.22"
 base64 = "0.21.4"
 csscolorparser = "0.6.2"
+minijinja = "1.0.21"
+vulkano = "0.34.1"
+shaderc = "0.8.3"
+log = "0.4.21"
 
 # [lib]
 # crate-type=["cdylib"]
