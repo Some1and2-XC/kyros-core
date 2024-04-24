@@ -45,10 +45,10 @@ impl Formula for R {
     }
     fn gpu_method(&self) -> String {
         "
+        Complex old_z = z;
         z = add(mult(z, z), c);
-        float tmp = z.data.y;
-        z.data.y -= z.data.x;
-        z.data.x -= tmp;
+        z.data.y -= old_z.data.x;
+        z.data.x -= old_z.data.y;
         ".trim().into()
     }
 }
@@ -68,12 +68,13 @@ impl Formula for ABR {
     }
     fn gpu_method(&self) -> String {
         "
+        Complex old_z = z;
         z = mult(z, z);
         if (z.data.y < 0.0) {
             z.data.y *= -1.0;
         }
-        z.data.y -= z.data.x;
-        z.data.x -= z.data.y + z.data.x;
+        z.data.y -= old_z.data.x;
+        z.data.x -= old_z.data.y;
         z.data += c.data;
         ".trim().into()
     }
