@@ -9,8 +9,10 @@ extern crate csscolorparser;
 
 use std::ops::{ Add, Sub, Mul};
 
+use log::LevelFilter;
+
 /// Main object for defining generation configuration. 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Config {
     pub c_init:          Option<Complex>, // Initial C value for when swap_zc is used
     pub size_x:                      u32, // Sets Image Width
@@ -28,7 +30,7 @@ pub struct Config {
     pub save_method:              String, // Specifies the way the image should be saved
     pub filename:                 String, // Specifies the filename of the image
     pub math_frame:            MathFrame,
-    pub progress:                   bool,
+    pub logs:                LevelFilter,
 }
 
 /// Struct for factor & offset for math space

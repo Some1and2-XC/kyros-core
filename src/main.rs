@@ -59,7 +59,6 @@ impl log::Log for Logger {
 fn main() {
 
     log::set_logger(&LOGGER).unwrap();
-    log::set_max_level(LevelFilter::Info);
 
     // env::set_var("RUST_BACKTRACE", "1");
     env::set_var("RUST_BACKTRACE", "full");
@@ -98,8 +97,10 @@ fn main() {
             offset_x: cli_args.offset_x,
             offset_y: cli_args.offset_y,
         },
-        progress: cli_args.progress,
+        logs: cli_args.logs,
     };
+
+    log::set_max_level(cli_args.logs);
 
     if cli_args.julia {
         config.c_init = Some(Complex {

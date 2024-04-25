@@ -98,11 +98,11 @@ pub fn cpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
                 }
             );
         }
-        if config.progress {
+        if config.logs >= Level::Info {
             print!("\t {:.2}% | {} / {}\r", 100.0 * (i as f64 + 1.0) / config.size_y as f64, i+1, config.size_y);
         }
     }
-    if config.progress {
+    if config.logs >= Level::Info {
         println!();
     }
 

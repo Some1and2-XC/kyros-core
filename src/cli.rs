@@ -8,6 +8,7 @@ Author : Mark T
 */
 
 use clap::Parser;
+use log::LevelFilter;
 
 static ABOUT_CLI_ARGS: &str = "
  ~ Kyros
@@ -34,6 +35,21 @@ kyros --pixels 512       \\
 Getting more help:
 Potential values for the formula, color and shadow flags can be retreived by passing an invalid values (such as 'HELP') to them.
 ";
+
+#[macro_export]
+macro_rules! clap_enum_variants {
+    ($e: ty) => {{
+        use clap::builder::TypedValueParser;
+        clap::builder::PossibleValuesParser::new(
+            <$e>::iter()
+                .map(|v| {
+                    v.to_string()
+                })
+                .collect::<Vec<String>>()
+        )
+        .map(|s| s.parse::<$e>().unwrap())
+    }};
+}
 
 #[derive(Parser, Debug)]
 #[command(about=ABOUT_CLI_ARGS)]
@@ -122,8 +138,8 @@ pub struct Args {
     pub gpu: bool,
 
     /// Flag for showing progress
-    #[arg(long, default_value_t=false, value_name="BOOL")]
-    pub progress: bool,
+    #[arg(long, default_value_t=LevelFilter::Off, value_name="LevelFilter", value_parser=clap_enum_variants!(LevelFilter))]
+    pub logs: LevelFilter,
 
     /// Confirm image generation
     #[arg(short, long, required(true))]
