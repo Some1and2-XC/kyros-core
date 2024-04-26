@@ -11,6 +11,7 @@ use std::error::Error;
 use std::str;
 use crate::gpu::run_glsl;
 use crate::colors::profiles::get_profile;
+use log;
 
 /// Function for getting image from configuration and generator function. 
 pub fn cpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
@@ -157,6 +158,7 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
         compute_shader.render(context!(
             formula => generator_function.gpu_method(),
+            travel_distance => format!("{:?}", config.travel_distance),
             rate_of_color_change => format!("{:.1}", config.rate_of_color_change),
             background => get_arr_str_with_len(config.background.to_array().into(), 4).unwrap(),
             foreground => get_arr_str_with_len(config.foreground.to_array().into(), 4).unwrap(),

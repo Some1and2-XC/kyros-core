@@ -41,11 +41,16 @@ void main() {
     vec2 cords = (gl_GlobalInvocationID.xy + vec2(0.5)) / vec2(imageSize(Data));
     Complex c = Complex(vec2({{ c_init }}));
     Complex z = Complex((cords - vec2(0.5)) * 4.0);
+
+    float z_output = 0.0;
+    bool travel_distance = {{ travel_distance }};
+
     float i;
     float maxi = {{ max_i }};
     float added = 1.0 / maxi;
 
     vec3 res;
+    Complex previous_z = z;
 
     if (length(z.data) > 2.0) {
         write_data(
@@ -57,14 +62,25 @@ void main() {
     }
 
     for (i = 0.0; i < 1.0; i += added) {
+        if (travel_distance) {
+            previous_z = z;
+        }
+
         {{ formula }}
 
+        if (travel_distance) {
+            z_output += distance(z.data, previous_z.data);
+        }
+
         if (length(z.data) > 2.0) {
+            if (!travel_distance) {
+                z_output = i;
+            }
             write_data(
                 vec4(
                     hsv_to_rgb(
                         vec3(
-                            mod(i * maxi * {{ rate_of_color_change }} / 360.0, 1.0),
+                            mod(z_output * maxi * {{ rate_of_color_change }} / 360.0, 1.0),
                             1.0,
                             1.0
                         )
