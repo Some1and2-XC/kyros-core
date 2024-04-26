@@ -82,7 +82,7 @@ pub struct Args {
     pub shadow: String,
 
     /// Specifies which color to use for the background
-    #[arg(long, default_value_t=("white".to_string()), value_name="COLOR")]
+    #[arg(long, default_value_t=("rgba(255, 255, 255, 0)".to_string()), value_name="COLOR")]
     pub background: String,
 
     /// Specifies which color to use for the foreground
