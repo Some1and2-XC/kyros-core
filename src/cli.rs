@@ -82,11 +82,11 @@ pub struct Args {
     pub shadow: String,
 
     /// Specifies which color to use for the background
-    #[arg(long, default_value_t=("white".to_string()), value_name="STR")]
+    #[arg(long, default_value_t=("white".to_string()), value_name="COLOR")]
     pub background: String,
 
     /// Specifies which color to use for the foreground
-    #[arg(long, default_value_t=("black".to_string()), value_name="STR")]
+    #[arg(long, default_value_t=("black".to_string()), value_name="COLOR")]
     pub foreground: String,
 
     /// Specifies if RGBA should be used for the image
@@ -137,7 +137,7 @@ pub struct Args {
     #[arg(long, default_value_t=false, value_name="BOOL")]
     pub gpu: bool,
 
-    /// Flag for showing progress
+    /// Sets the verbosity of logs
     #[arg(long, default_value_t=LevelFilter::Off, value_name="LevelFilter", value_parser=clap_enum_variants!(LevelFilter))]
     pub logs: LevelFilter,
 
