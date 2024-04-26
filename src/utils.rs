@@ -115,20 +115,36 @@ static TEMPLATE: &str = include_str!(
 
 pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
+    /// Takes a Vec<f64> and returns a string that looks like 1.00000, 2.00000, 3.00000
+    /// Returns Option<None> if the result isn't the expected length
+    fn get_arr_str_with_len(in_arr: Vec<f64>, expected_length: usize) -> Option<String> {
+        if in_arr.len() != expected_length {
+            log::debug!("Invalid length of array.");
+            log::debug!("Expected length: `{expected_length}`.");
+            log::debug!("Got Array: `{in_arr:?}`.");
+            return None;
+        }
+        return Some(in_arr
+            .iter()
+            .map(|v| format!("{v:.5?}"))
+            .collect::<Vec<String>>()
+            .join(", ")
+            .into()
+        );
+    }
+
     let color_function = get_color(&config.color_formula.as_str());
     let shadow_function = get_shadow(&config.shadow_formula.as_str());
     let generator_function = get_formula(&config.gen_formula.as_str());
 
-    let mut c = Complex { real: 0f64, imaginary: 0f64, };
-    let is_julia: bool = match config.c_init {
+    // Sets value for math constant 'c'
+    let c: [f64; 2] = match config.c_init {
         Some(value) => {
-            c = value;
-            true
+            [value.real, value.imaginary]
         },
-        None => false,
+        None => [0.0, 0.0],
     };
 
-    let max_i = config.max_i as f64;
     let color_profile = get_profile(&config);
 
     let compiled_shader = {
@@ -140,7 +156,13 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         let compute_shader = env.get_template("compute_shader").unwrap();
 
         compute_shader.render(context!(
-            formula => generator_function.gpu_method()
+            formula => generator_function.gpu_method(),
+            rate_of_color_change => format!("{:.1}", config.rate_of_color_change),
+            background => get_arr_str_with_len(config.background.to_array().into(), 4).unwrap(),
+            foreground => get_arr_str_with_len(config.foreground.to_array().into(), 4).unwrap(),
+            max_i => format!("{:.1}", config.max_i),
+            c_init => get_arr_str_with_len(c.into(), 2).unwrap(),
+
             ))
             .unwrap()
             .replace("\\n", "\n")

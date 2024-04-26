@@ -2,10 +2,6 @@
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-// layout(std430, set = 0, binding = 0) buffer InData {
-//     uint index;
-// } ub;
-
 layout(set = 0, binding = 0, rgba8) uniform writeonly image2D Data;
 
 vec3 hsv_to_rgb (vec3 c) {
@@ -18,8 +14,8 @@ int from_decimal (float n) {
     return int(mod(n, 1) * 255);
 }
 
-void write_data(vec3 res) {
-    imageStore(Data, ivec2(gl_GlobalInvocationID.xy), vec4(res, 1.0));
+void write_data(vec4 res) {
+    imageStore(Data, ivec2(gl_GlobalInvocationID.xy), res);
 }
 
 struct Complex {
@@ -43,16 +39,20 @@ Complex mult(Complex n1, Complex n2) {
 
 void main() {
     vec2 cords = (gl_GlobalInvocationID.xy + vec2(0.5)) / vec2(imageSize(Data));
-    Complex c = Complex((cords - vec2(0.5)) * 4.0);
-    Complex z = Complex(vec2(0.0, 0.0));
+    Complex c = Complex(vec2({{ c_init }}));
+    Complex z = Complex((cords - vec2(0.5)) * 4.0);
     float i;
-    float maxi = 1000.0;
+    float maxi = {{ max_i }};
     float added = 1.0 / maxi;
 
     vec3 res;
 
-    if (length(c.data) > 2.0) {
-        write_data(vec3(1.0, 1.0, 1.0));
+    if (length(z.data) > 2.0) {
+        write_data(
+            vec4(
+                {{ background }}
+            )
+        );
         return;
     }
 
@@ -60,14 +60,23 @@ void main() {
         {{ formula }}
 
         if (length(z.data) > 2.0) {
-            write_data(hsv_to_rgb(vec3(
-                mod(i * maxi * 12.0 / 360.0, 1.0),
-                1.0,
-                1.0
-            )));
+            write_data(
+                vec4(
+                    hsv_to_rgb(
+                        vec3(
+                            mod(i * maxi * {{ rate_of_color_change }} / 360.0, 1.0),
+                            1.0,
+                            1.0
+                        )
+                    ),
+                    1.0
+                )
+            );
             return;
         }
     }
 
-    write_data(vec3(0.0, 0.0, 0.0));
+    write_data(vec4(
+        {{ foreground }}
+    ));
 }
