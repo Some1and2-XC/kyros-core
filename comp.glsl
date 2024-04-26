@@ -42,57 +42,52 @@ void main() {
     Complex c = Complex(vec2({{ c_init }}));
     Complex z = Complex((cords - vec2(0.5)) * 4.0);
 
+    {{ julia_changes }}
+
     float z_output = 0.0;
     bool travel_distance = {{ travel_distance }};
 
-    float i;
-    float maxi = {{ max_i }};
+    int maxi = {{ max_i }};
     float added = 1.0 / maxi;
 
     vec3 res;
     Complex previous_z = z;
 
-    if (length(z.data) > 2.0) {
-        write_data(
-            vec4(
-                {{ background }}
-            )
-        );
-        return;
-    }
+    int i;
+    for (i = 0; i < maxi; i += 1) {
 
-    for (i = 0.0; i < 1.0; i += added) {
-        if (travel_distance) {
-            previous_z = z;
+        if (length(z.data) > 2.0) {
+            break;
         }
 
         {{ formula }}
 
         if (travel_distance) {
             z_output += distance(z.data, previous_z.data);
-        }
-
-        if (length(z.data) > 2.0) {
-            if (!travel_distance) {
-                z_output = i;
-            }
-            write_data(
-                vec4(
-                    hsv_to_rgb(
-                        vec3(
-                            mod(z_output * maxi * {{ rate_of_color_change }} / 360.0, 1.0),
-                            1.0,
-                            1.0
-                        )
-                    ),
-                    1.0
-                )
-            );
-            return;
+            previous_z = z;
+        } else {
+            z_output += 1;
         }
     }
 
-    write_data(vec4(
-        {{ foreground }}
-    ));
+    vec4 out_pixel;
+
+    if (z_output == 0.0) {
+        out_pixel = vec4( {{ background }} );
+    } else if (z_output == maxi) {
+        out_pixel = vec4( {{ foreground }} );
+    } else {
+        out_pixel = vec4(
+            hsv_to_rgb(
+                vec3(
+                    mod(z_output * {{ rate_of_color_change }} / 360.0, 1.0),
+                    1.0,
+                    1.0
+                )
+            ),
+            1.0
+        );
+    }
+
+    write_data(out_pixel);
 }

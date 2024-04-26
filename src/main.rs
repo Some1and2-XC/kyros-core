@@ -24,14 +24,14 @@ use crate::save::get_save_method;
 
 // std imports
 use std::env;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 
 // External Imports
 extern crate image;
 extern crate csscolorparser;
 extern crate log;
 
-use log::{Level, LevelFilter, Metadata, Record};
+use log::{Level, Metadata, Record};
 
 // External Crates
 use clap::Parser;

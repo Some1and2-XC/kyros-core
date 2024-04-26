@@ -66,23 +66,21 @@ pub fn cpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
             let mut z_output: f64 = 0.0;
 
             // Runs Math
-            for iteration in 0..config.max_i {
-                if iteration == config.max_i { break; }
-                if z.is_greater(2.0) { break; }
+            for _iteration in 0..config.max_i {
+                if z.is_greater(2.0) { break }
                 z = generator_function.method(c, z);
 
                 // Calculates Output
                 if !config.travel_distance {
                     z_output += 1.0;
-                }
-                else {
+                } else {
                     z_output += (
                         (z.real - old_z.real) * (z.real - old_z.real) +
                         (z.imaginary - old_z.imaginary) * (z.imaginary - old_z.imaginary)
                     ).sqrt();
                     old_z = z;
                 }
-            };
+            }
 
             // Adds a pixel
             img.extend(
@@ -134,8 +132,8 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         );
     }
 
-    let color_function = get_color(&config.color_formula.as_str());
-    let shadow_function = get_shadow(&config.shadow_formula.as_str());
+    let _color_function = get_color(&config.color_formula.as_str());
+    let _shadow_function = get_shadow(&config.shadow_formula.as_str());
     let generator_function = get_formula(&config.gen_formula.as_str());
 
     // Sets value for math constant 'c'
@@ -146,7 +144,7 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         None => [0.0, 0.0],
     };
 
-    let color_profile = get_profile(&config);
+    let _color_profile = get_profile(&config);
 
     let compiled_shader = {
         let mut env = Environment::new();
@@ -162,8 +160,12 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
             rate_of_color_change => format!("{:.1}", config.rate_of_color_change),
             background => get_arr_str_with_len(config.background.to_array().into(), 4).unwrap(),
             foreground => get_arr_str_with_len(config.foreground.to_array().into(), 4).unwrap(),
-            max_i => format!("{:.1}", config.max_i),
+            max_i => format!("{:}", config.max_i),
             c_init => get_arr_str_with_len(c.into(), 2).unwrap(),
+            julia_changes => match config.c_init {
+                Some(_) => "", // Is julia settings
+                None => "c = z;", // Mandelbrot settings
+            }
 
             ))
             .unwrap()
