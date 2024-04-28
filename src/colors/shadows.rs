@@ -10,7 +10,32 @@ use clap::CommandFactory;
       Date : 6/21/2023
 */
 
+pub trait Colors {
+    fn get_alias(&self) -> String;
+    fn get_description(&self) -> String;
+    fn method(&self, n: f64) -> f64;
+    fn gpu_method(&self) -> String;
+}
+
 /// Rotational Coloring function for generation. Uses HSV rotational color. 
+/*
+struct NONE {}
+impl Colors for NONE {
+    fn get_alias(&self) -> String {
+        "NONE".into()
+    }
+    fn get_description(&self) -> String {
+        "\tDoesn't change values, sets all lightness values to '1'".into()
+    }
+    fn method(&self, n: f64) -> f64 {
+        return 1.0;
+    }
+    fn gpu_method(&self) -> String {
+        "1.0".into()
+    }
+}
+*/
+
 fn NONE(_: f64) -> f64 {
     // Gets color value
     return 1.0;
