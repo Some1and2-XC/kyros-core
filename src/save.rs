@@ -5,7 +5,7 @@ use super::*;
 use std::ops::Deref;
 use std::io::Cursor;
 use std::error::Error;
-use std::fs;
+use std::fs::{self, File};
 use std::path::Path;
 
 use base64::{Engine as _, engine::general_purpose};
@@ -13,6 +13,7 @@ use base64::{Engine as _, engine::general_purpose};
 use clap::error::ErrorKind;
 use clap::CommandFactory;
 
+use image::codecs::tiff::TiffEncoder;
 use image::{DynamicImage, save_buffer, ColorType, ImageEncoder, ImageBuffer, PixelWithColorType, EncodableLayout};
 use image::codecs::png::PngEncoder;
 
@@ -45,9 +46,35 @@ impl Save for PNG {
         }
 
         let outfile = format!("{}.png", config.filename);
-        let path: &Path = Path::new(outfile.as_str());
+        let path = Path::new(outfile.as_str());
         fs::write(path, png_buf).unwrap();
         // image_buffer.save(format!("{}.png", config.filename)).unwrap();
+        return Ok(());
+    }
+}
+
+pub struct TIFF {}
+
+impl Save for TIFF {
+    fn get_alias(&self) -> String {"TIFF".into()}
+    fn get_description(&self) -> String {"Saves Image as TIFF".into()}
+    fn method(&self, image_buffer: &[u8], config: &Config) -> Result<(), Box<dyn Error>> {
+
+        let outfile = format!("{}.tiff", config.filename);
+        let tiff_file = File::create(outfile).unwrap();
+        {
+            let encoder = TiffEncoder::new(&tiff_file);
+            let _ = encoder.write_image(
+                image_buffer,
+                config.size_x,
+                config.size_y,
+                match config.rgba {
+                    true => image::ColorType::Rgba8,
+                    false => image::ColorType::Rgb8,
+                },
+            );
+        }
+
         return Ok(());
     }
 }
@@ -87,6 +114,7 @@ pub fn get_save_method(save_method: &str) -> &dyn Save {
     let methods: Vec<&dyn Save> = vec![
         &PNG{},
         &B64{},
+        &TIFF{},
     ];
 
     // Iterates through methods to find one that matches

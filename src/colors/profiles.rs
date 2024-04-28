@@ -54,29 +54,4 @@ pub fn get_profile(config: &Config) -> Box<dyn ColorProfile> {
             ]),
         }
     );
-
-    // Some shenanigans need to take place for this to work
-    /*
-    if config.rgba {
-        return &RgbaProfile{
-            background: PixelType::Rgba8(Rgba(background.into())),
-            foreground: PixelType::Rgba8(Rgba(foreground.into())),
-        };
-    }
-
-    else {
-        return &RgbProfile{
-            background: PixelType::Rgb8(Rgb([
-                background.0,
-                background.1,
-                background.2,
-            ])),
-            foreground: PixelType::Rgb8(Rgb([
-                foreground.0,
-                foreground.1,
-                foreground.2,
-            ])),
-        };
-    }
-    */
 }
