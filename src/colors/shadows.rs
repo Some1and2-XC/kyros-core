@@ -10,7 +10,7 @@ use clap::CommandFactory;
       Date : 6/21/2023
 */
 
-pub trait Colors {
+pub trait Shadows {
     fn get_alias(&self) -> String;
     fn get_description(&self) -> String;
     fn method(&self, n: f64) -> f64;
