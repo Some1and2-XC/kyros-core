@@ -163,7 +163,7 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
             foreground => get_arr_str_with_len(config.foreground.to_array().into(), 4).unwrap(),
             max_i => format!("{:}", config.max_i),
             c_init => get_arr_str_with_len(c.into(), 2).unwrap(),
-            colors => color_function.gpu_method(config),
+            colors => color_function.gpu_method(),
             julia_changes => match config.c_init {
                 Some(_) => "", // Is julia settings
                 None => "c = z;", // Mandelbrot settings
