@@ -10,6 +10,11 @@ vec3 hsv_to_rgb (vec3 c) {
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
+// From colors.rs
+float colors (float n) {
+    {{ colors }}
+}
+
 int from_decimal (float n) {
     return int(mod(n, 1) * 255);
 }
@@ -80,7 +85,11 @@ void main() {
         out_pixel = vec4(
             hsv_to_rgb(
                 vec3(
-                    mod(z_output * {{ rate_of_color_change }} / 360.0, 1.0),
+                    mod(
+                        colors(
+                            z_output * {{ rate_of_color_change }}
+                        )
+                    / 360.0, 1.0),
                     1.0,
                     1.0
                 )
