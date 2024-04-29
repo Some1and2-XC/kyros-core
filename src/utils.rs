@@ -154,6 +154,7 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
             ).unwrap();
         let compute_shader = env.get_template("compute_shader").unwrap();
 
+        // Big mess that passes all the values to the Jinja template
         compute_shader.render(context!(
             formula => generator_function.gpu_method(),
             travel_distance => format!("{:?}", config.travel_distance),

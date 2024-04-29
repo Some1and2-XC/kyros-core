@@ -14,7 +14,7 @@ pub trait Colors {
     fn get_alias(&self) -> String;
     fn get_description(&self) -> String;
     fn method(&self, n: f64, config: &Config) -> f64;
-    fn gpu_method(&self, config: &Config) -> String;
+    fn gpu_method(&self) -> String;
 }
 
 struct ROTATIONAL {}
@@ -22,7 +22,7 @@ impl Colors for ROTATIONAL {
     fn get_alias(&self) -> String { "ROTATIONAL".into() }
     fn get_description(&self) -> String { "Simple rotational color based on iteration value".into() }
     fn method(&self, n: f64, config: &Config) -> f64 { n * config.rate_of_color_change }
-    fn gpu_method(&self, config: &Config) -> String {
+    fn gpu_method(&self) -> String {
         "return n;".into()
     }
 }
@@ -39,7 +39,7 @@ impl Colors for SINUSOIDAL {
         return (max_value - min_value) * 0.5 * (n * config.rate_of_color_change * 0.0174532925199).cos() +
             (max_value + min_value) * 0.5;
     }
-    fn gpu_method(&self, config: &Config) -> String {
+    fn gpu_method(&self) -> String {
         "
             float max_value = 277.0;
             float min_value = 420.0;
