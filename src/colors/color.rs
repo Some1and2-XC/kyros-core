@@ -5,11 +5,6 @@ use super::super::*;
 use clap::error::ErrorKind;
 use clap::CommandFactory;
 
-/*
-    Author : Mark T
-      Date : 6/21/2023
-*/
-
 pub trait Colors {
     fn get_alias(&self) -> String;
     fn get_description(&self) -> String;
@@ -58,7 +53,7 @@ pub fn get_color(color: &str) -> &dyn Colors {
         &SINUSOIDAL {},
     ];
 
-    // Tries to find function in FORMULAS const
+    // Tries to find function in colors array
     for method in colors.clone() {
         if method.get_alias() == color.to_string() {
             return method;

@@ -90,7 +90,7 @@ pub fn cpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
                         x if (x >= max_i && !config.travel_distance) => color_profile.get_foreground().to_owned(),
                         _ => color_profile.method(
                             color_function.method(z_output, &config).rem_euclid(360.0),
-                            shadow_function(z_output).rem_euclid(360.0),
+                            shadow_function.method(z_output).rem_euclid(360.0),
                         ),
                     };
                     out[0..(3 + config.rgba as usize)].to_owned().iter()
@@ -133,7 +133,7 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     }
 
     let color_function = get_color(&config.color_formula.as_str());
-    let _shadow_function = get_shadow(&config.shadow_formula.as_str());
+    let shadow_function = get_shadow(&config.shadow_formula.as_str());
     let generator_function = get_formula(&config.gen_formula.as_str());
 
     // Sets value for math constant 'c'
@@ -164,6 +164,7 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
             max_i => format!("{:}", config.max_i),
             c_init => get_arr_str_with_len(c.into(), 2).unwrap(),
             colors => color_function.gpu_method(),
+            shadows => shadow_function.gpu_method(),
             julia_changes => match config.c_init {
                 Some(_) => "", // Is julia settings
                 None => "c = z;", // Mandelbrot settings

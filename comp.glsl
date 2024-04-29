@@ -15,6 +15,11 @@ float colors (float n) {
     {{ colors }}
 }
 
+// From shadows.rs
+float shadows (float n) {
+    {{ shadows }}
+}
+
 int from_decimal (float n) {
     return int(mod(n, 1) * 255);
 }
@@ -91,7 +96,7 @@ void main() {
                         )
                     / 360.0, 1.0),
                     1.0,
-                    1.0
+                    shadows(z_output)
                 )
             ),
             1.0
