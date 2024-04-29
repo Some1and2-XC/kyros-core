@@ -272,10 +272,9 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
         .then_signal_fence_and_flush()
         .unwrap();
     future.wait(None).unwrap();
-    log::info!("{:.2?}: Finished GPU Execution", now.elapsed());
 
     let data_buffer_content = data_buffer.read().unwrap();
-    log::info!("{:.2?}: Read Data Buffer & saving file", now.elapsed());
+    log::info!("{:.2?}: Finished GPU Execution", now.elapsed());
 
     return save_method.method(&data_buffer_content[..], config);
 }
