@@ -26,7 +26,7 @@ impl Shadows for NONE {
     fn get_description(&self) -> String {
         "\tDoesn't change values, sets all lightness values to '1'".into()
     }
-    fn method(&self, n: f64) -> f64 {
+    fn method(&self, _n: f64) -> f64 {
         return 1.0;
     }
     fn gpu_method(&self) -> String {

@@ -60,9 +60,41 @@ fn compile_to_spirv(glsl: String, kind: shaderc::ShaderKind, entry_point_name: &
     let mut options = shaderc::CompileOptions::new().unwrap();
 
     options.add_macro_definition("EP", Some(entry_point_name));
-    compiler
-        .compile_into_spirv(&glsl, kind, "comp.glsl", entry_point_name, Some(&options))
-        .expect("Could not compile GLSL shader to spir-v")
+
+    let filename = "comp.glsl";
+
+    match compiler
+        .compile_into_spirv(&glsl, kind, filename, entry_point_name, Some(&options)) {
+            Ok(v) => v,
+            Err(e) => {
+                let lines = glsl
+                    .split("\n")
+                    .map(|v| v.to_string())
+                    .collect::<Vec<String>>()
+                    ;
+
+                // Gets the string length of the length of the lines array
+                // let v = 0..100;
+                // max_str_length of v would be 3
+                let max_str_length = lines
+                    .len()
+                    .to_string()
+                    .len()
+                    ;
+
+                println!("Generated GLSL (filename: {filename}");
+
+                for (i, line) in lines.iter().enumerate() {
+                    println!(
+                        "{}{} {}",
+                        " ".repeat(max_str_length - i.to_string().len()),
+                        i,
+                        line,
+                    );
+                }
+                panic!("{}", e);
+            }
+    }
 }
 
 pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
