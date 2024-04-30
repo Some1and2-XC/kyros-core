@@ -82,17 +82,21 @@ fn compile_to_spirv(glsl: String, kind: shaderc::ShaderKind, entry_point_name: &
                     .len()
                     ;
 
-                println!("Generated GLSL (filename: {filename}");
+                println!("Generated GLSL (filename: {filename})");
 
                 for (i, line) in lines.iter().enumerate() {
                     println!(
                         "{}{} {}",
                         " ".repeat(max_str_length - i.to_string().len()),
-                        i,
+                        i + 1,
                         line,
                     );
                 }
-                panic!("{}", e);
+                panic!(
+                    "{}\n{}",
+                    e,
+                    "SPIR-V GPU Compiler Error! Try checking the GLSL code above and the line number at the top for more information.",
+                );
             }
     }
 }

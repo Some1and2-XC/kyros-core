@@ -30,7 +30,7 @@ impl Shadows for NONE {
         return 1.0;
     }
     fn gpu_method(&self) -> String {
-        "1.0".into()
+        "return 1.0;".into()
     }
 }
 
