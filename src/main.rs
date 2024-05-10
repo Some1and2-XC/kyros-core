@@ -114,7 +114,7 @@ fn main() {
     // Sets the save method before generation (For ensuring this is tested before the image is
     // generated)
 
-    // Runs Config, gets 32 byte img object
+    // Runs Config
     let _ = match config.gpu {
         true => utils::gpu_eval(&config),
         false => utils::cpu_eval(&config),
