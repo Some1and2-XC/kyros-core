@@ -18,6 +18,7 @@ kyros.exe --background transparent --foreground "rgba(255, 0, 0, 1)" --rgba -y
 
 ## GPU
 Kyros implements most of its arguments to work both on the CPU and GPU. The GPU acceleration is done with the Vulkan rust API called [Vulkano](https://vulkano.rs/) as well as using the [shaderc-rs](https://github.com/google/shaderc-rs) library for run time SPIR-V compilation. Because of the overhead of this implementation, generally images under 1000px x 1000px will be faster on CPU however this will vary by system.
+To use the GPU implementation, the vulkan library must be installed first.
 ### Limitations and Implementation details
  - Because the minimum byte width of the GPU array is 4, the GPU always uses RGBA color even if this isn't specified in the CLI arguments.
  - The size of the image depends on the amount of memory available in GPU. Because of this, run-time errors can occur at higher resolutions (around 25kpx x 25kpx for a NVIDIA GeForce GTX 1060 6GB GPU.)

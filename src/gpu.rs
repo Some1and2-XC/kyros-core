@@ -111,7 +111,13 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
     let now = Instant::now();
 
     // Boilerplate Initialization
-    let library = VulkanLibrary::new().unwrap();
+    let library = match VulkanLibrary::new() {
+        Ok(v) => v,
+        Err(e) => {
+            println!("Can't initialize Vulkan Library with error: '{:?}'. (is vulkan installed?)", e.to_string());
+            std::process::exit(1);
+        }
+    };
     let instance = Instance::new(
         library,
         InstanceCreateInfo {
