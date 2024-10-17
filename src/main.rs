@@ -88,7 +88,7 @@ fn main() {
         save_method: cli_args.save_method,
         filename: cli_args.filename,
 
-        rgba: cli_args.rgba | cli_args.gpu,
+        rgba: cli_args.rgba | cli_args.gpu, // forces rgba if using gpu
         gpu: cli_args.gpu,
 
         math_frame: MathFrame {
