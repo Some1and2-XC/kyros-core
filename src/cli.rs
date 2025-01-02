@@ -51,7 +51,7 @@ macro_rules! clap_enum_variants {
     }};
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(about=ABOUT_CLI_ARGS)]
 #[command(long_about=LONG_ABOUT_CLI_ARGS)]
 #[command(version)]
@@ -136,6 +136,15 @@ pub struct Args {
     /// Uses GPU for Image Generation
     #[arg(long, default_value_t=false, value_name="BOOL")]
     pub gpu: bool,
+
+    /// The size of the generated PNG chunks. If the intent is to only generate one chunk, this
+    /// should not be set.
+    #[arg(long, value_name="Option<INT>")]
+    pub chunk_sizes: Option<u64>,
+
+    /// Sets the amount of threads to use for compression while using GPU generation.
+    #[arg(long, default_value_t=1, value_name="INT")]
+    pub compression_threads: usize,
 
     /// Sets the verbosity of logs
     #[arg(long, default_value_t=LevelFilter::Off, value_name="LevelFilter", value_parser=clap_enum_variants!(LevelFilter))]

@@ -4,6 +4,10 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, rgba8) uniform writeonly image2D Data;
 
+layout(push_constant) uniform Params {
+    int in_n1;
+};
+
 vec3 hsv_to_rgb (vec3 c) {
     vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
     vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
@@ -87,6 +91,7 @@ void main() {
     } else if (z_output == maxi) {
         out_pixel = vec4( {{ foreground }} );
     } else {
+
         out_pixel = vec4(
             hsv_to_rgb(
                 vec3(

@@ -5,6 +5,11 @@ Author : Mark T
   Main file for running processes
 */
 
+// External Imports
+extern crate image;
+extern crate csscolorparser;
+extern crate log;
+
 // Project Crates
 mod math;
 mod structs;
@@ -25,11 +30,6 @@ use crate::save::get_save_method;
 // std imports
 use std::env;
 use std::time::Instant;
-
-// External Imports
-extern crate image;
-extern crate csscolorparser;
-extern crate log;
 
 use log::{Level, Metadata, Record};
 
@@ -90,6 +90,8 @@ fn main() {
 
         rgba: cli_args.rgba | cli_args.gpu, // forces rgba if using gpu
         gpu: cli_args.gpu,
+        chunk_sizes: cli_args.chunk_sizes,
+        compression_threads: cli_args.compression_threads,
 
         math_frame: MathFrame {
             factor_x: cli_args.factor_x / (cli_args.pixels as f64 - 1.0),

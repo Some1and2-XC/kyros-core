@@ -2,21 +2,20 @@ extern crate vulkano;
 extern crate image;
 extern crate shaderc;
 
+use ahash::HashMapExt;
 use shaderc::CompilationArtifact;
 use core::panic;
 use std::{
-    error::Error, time::Instant,
+    collections::HashSet, error::Error, time::Instant
 };
 
 use vulkano::{
     buffer::{
-        allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo}, BufferUsage, Subbuffer
+        allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo}, Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer
     }, command_buffer::{
         allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage, CopyImageToBufferInfo
     }, descriptor_set::{
-        allocator::StandardDescriptorSetAllocator,
-        persistent::PersistentDescriptorSet,
-        WriteDescriptorSet,
+        allocator::StandardDescriptorSetAllocator, layout::{DescriptorSetLayout, DescriptorSetLayoutCreateFlags, DescriptorSetLayoutCreateInfo, DescriptorType}, persistent::PersistentDescriptorSet, WriteDescriptorSet
     }, device::{
         physical::PhysicalDeviceType,
         Device,
@@ -36,9 +35,9 @@ use vulkano::{
         MemoryTypeFilter,
         StandardMemoryAllocator,
     }, pipeline::{
-        compute::ComputePipelineCreateInfo, layout::PipelineDescriptorSetLayoutCreateInfo, ComputePipeline, Pipeline, PipelineBindPoint, PipelineLayout, PipelineShaderStageCreateInfo
+        compute::ComputePipelineCreateInfo, layout::{PipelineLayoutCreateFlags, PipelineLayoutCreateInfo, PushConstantRange}, ComputePipeline, Pipeline, PipelineBindPoint, PipelineLayout, PipelineShaderStageCreateInfo
     }, shader::{
-        ShaderModule, ShaderModuleCreateInfo,
+        DescriptorBindingRequirements, DescriptorRequirements, ShaderModule, ShaderModuleCreateInfo, ShaderStages
     }, sync::{
         self,
         GpuFuture
@@ -53,6 +52,13 @@ const MINIMAL_FEATURES: Features = Features {
     geometry_shader: true,
     ..Features::empty()
 };
+
+/// A test struct to see if I can get some data in the GPU
+#[derive(Clone, Copy, BufferContents, Default)]
+#[repr(C)]
+struct GPUConfig {
+    n1: u32,
+}
 
 fn compile_to_spirv(glsl: String, kind: shaderc::ShaderKind, entry_point_name: &str) -> CompilationArtifact {
 
@@ -107,6 +113,8 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
 
     let image_width = config.size_x;
     let image_height = config.size_y;
+
+    let buf_length = image_height as u64 * image_width as u64 * 4;
 
     let now = Instant::now();
 
@@ -180,32 +188,65 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
 
     let queue = queues.next().unwrap();
 
+    let entry_point = "main";
+
+    let cs = {
+        unsafe {
+            ShaderModule::new(
+                device.clone(),
+                ShaderModuleCreateInfo::new(
+                    compile_to_spirv(
+                        glsl,
+                        shaderc::ShaderKind::Compute,
+                        entry_point)
+                        .as_binary(),
+                ),
+            ).unwrap()
+        }
+    };
+
     let pipeline = {
-        let entry_point = "main";
-        let cs = {
-            unsafe {
-                ShaderModule::new(
-                    device.clone(),
-                    ShaderModuleCreateInfo::new(
-                        compile_to_spirv(
-                            glsl,
-                            shaderc::ShaderKind::Compute,
-                            entry_point)
-                            .as_binary(),
-                    ),
-                ).unwrap()
-            }
-        };
 
         let stage = PipelineShaderStageCreateInfo::new(
             cs.entry_point(entry_point).unwrap()
             );
-        let layout = PipelineLayout::new(
-            device.clone(),
-            PipelineDescriptorSetLayoutCreateInfo::from_stages([&stage])
-                .into_pipeline_layout_create_info(device.clone())
-                .unwrap(),
-            ).unwrap();
+
+        let layout = PipelineLayout::new(device.clone(), PipelineLayoutCreateInfo {
+            flags: PipelineLayoutCreateFlags::empty(),
+            set_layouts: vec![
+                DescriptorSetLayout::new(device.clone(), DescriptorSetLayoutCreateInfo {
+                    flags: DescriptorSetLayoutCreateFlags::empty(),
+                    bindings: [(0, (&DescriptorBindingRequirements {
+                        descriptor_types: vec![DescriptorType::StorageImage],
+                        descriptor_count: Some(1), // This implies that the size gets decided at runtime
+                        stages: ShaderStages::COMPUTE,
+                        descriptors: {
+                            let mut map = ahash::HashMap::new();
+                            map.insert(Some(0), DescriptorRequirements {
+                                memory_read: ShaderStages::COMPUTE,
+                                memory_write: ShaderStages::COMPUTE,
+                                sampler_compare: false,
+                                sampler_no_unnormalized_coordinates: false,
+                                sampler_no_ycbcr_conversion: false,
+                                sampler_with_images: HashSet::default(),
+                                storage_image_atomic: false,
+                            });
+                            map
+                        },
+                        ..Default::default()
+                    }).into())].into(),
+                    ..Default::default()
+                }).unwrap(),
+            ],
+            push_constant_ranges: vec![
+                PushConstantRange {
+                    stages: ShaderStages::COMPUTE,
+                    offset: 0,
+                    size: std::mem::size_of::<GPUConfig>() as u32,
+                }
+            ],
+            ..Default::default()
+        }).unwrap();
 
         ComputePipeline::new(
             device.clone(),
@@ -237,10 +278,17 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
             ..Default::default()
         },
         AllocationCreateInfo {
-            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
-                ,
+            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
             ..Default::default()
         },
+    ).unwrap();
+
+    let _config_buffer = Buffer::new_sized::<GPUConfig>(memory_allocator.clone(),
+        BufferCreateInfo {
+            usage: BufferUsage::TRANSFER_SRC | BufferUsage::UNIFORM_BUFFER,
+            ..Default::default()
+        },
+        AllocationCreateInfo::default()
     ).unwrap();
 
     let view = ImageView::new_default(image.clone()).unwrap();
@@ -257,33 +305,28 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
         },
     );
 
-    let buf_length = image_height as u64 * image_width as u64 * 4;
+    let data_buffer: Subbuffer<[u8]> = buffer_allocator
+        .allocate_unsized(buf_length)
+        .expect("Unable to allocate '{buf_length}'!")
+        ;
 
-    let data_buffer: Subbuffer<[u8]> = match buffer_allocator
-        .allocate_unsized(buf_length) {
-            Ok(v) => v,
-            Err(_) => {
-                panic!("Unable to allocate '{buf_length}'!");
-            },
-    };
+    let layout = &pipeline.layout().set_layouts();
 
-    let layout = &pipeline.layout().set_layouts()[0];
-    let set = PersistentDescriptorSet::new(
+    // Here we setup the descriptor sets.
+    let image_desc_set = PersistentDescriptorSet::new(
         &descriptor_set_allocator,
-        layout.clone(),
+        layout[0].clone(),
         [
             WriteDescriptorSet::image_view(0, view.clone()),
         ],
         [],
-    )
-    .unwrap();
+        ).unwrap();
 
     let mut builder = AutoCommandBufferBuilder::primary(
-        &command_buffer_allocator,
-        queue_family_index,
-        CommandBufferUsage::OneTimeSubmit,
-    )
-    .unwrap();
+            &command_buffer_allocator,
+            queue_family_index,
+            CommandBufferUsage::OneTimeSubmit,
+        ).unwrap();
 
     builder
         .bind_pipeline_compute(pipeline.clone())
@@ -292,19 +335,16 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
             PipelineBindPoint::Compute,
             pipeline.layout().clone(),
             0,
-            set,
-        )
+            image_desc_set,
+        ).unwrap()
+        .push_constants(pipeline.layout().clone(), 0, GPUConfig::default())
         .unwrap()
-        ;
-
-    builder
         .dispatch([image_height / 16, image_width / 16, 1])
         .unwrap()
         .copy_image_to_buffer(CopyImageToBufferInfo::image_buffer(
             image.clone(),
             data_buffer.clone(),
-        ))
-        .unwrap()
+        )).unwrap()
         ;
 
     let command_buffer = builder.build().unwrap();

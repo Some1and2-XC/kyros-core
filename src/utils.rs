@@ -13,7 +13,7 @@ use crate::gpu::run_glsl;
 use crate::colors::profiles::get_profile;
 use log;
 
-/// Function for getting image from configuration and generator function. 
+/// Function for getting image from configuration and generator function.
 pub fn cpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
     let save_method = get_save_method(config.save_method.as_str());
