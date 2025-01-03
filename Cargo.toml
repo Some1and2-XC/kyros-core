@@ -12,7 +12,7 @@ hsv = "0.1.1"
 image = "0.24.6"
 time = "0.3.22"
 base64 = "0.21.4"
-csscolorparser = "0.6.2"
+csscolorparser = { version = "0.6.2", features = ["serde"] }
 minijinja = "1.0.21"
 vulkano = "0.34.1"
 shaderc = "0.8.3"
@@ -20,6 +20,9 @@ log = "0.4.21"
 bytemuck = "1.21.0"
 ahash = "0.8.11"
 vulkano-shaders = "0.34.0"
+png = "0.17.16"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.134"
 
 # [lib]
 # crate-type=["cdylib"]

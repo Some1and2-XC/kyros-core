@@ -9,6 +9,7 @@ Author : Mark T
 
 use clap::Parser;
 use log::LevelFilter;
+use serde::{Deserialize, Serialize};
 
 static ABOUT_CLI_ARGS: &str = "
  ~ Kyros
@@ -21,7 +22,7 @@ Example:
 
 const LONG_ABOUT_CLI_ARGS: &str = "
  ~ Kyros
-A CLI tool for generating fractal images. 
+A CLI tool for generating fractal images.
 
 Example:
 kyros --pixels 512       \\
@@ -147,10 +148,14 @@ pub struct Args {
     pub compression_threads: usize,
 
     /// Sets the verbosity of logs
-    #[arg(long, default_value_t=LevelFilter::Off, value_name="LevelFilter", value_parser=clap_enum_variants!(LevelFilter))]
+    #[arg(long, default_value_t=default_level_filter(), value_name="LevelFilter", value_parser=clap_enum_variants!(LevelFilter))]
     pub logs: LevelFilter,
 
     /// Confirm image generation
     #[arg(short, long, required(true))]
     pub y_confirm: bool,
+}
+
+pub fn default_level_filter() -> LevelFilter {
+    LevelFilter::Off
 }

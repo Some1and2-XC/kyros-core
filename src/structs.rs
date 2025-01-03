@@ -7,12 +7,15 @@ File for containing the logic for the Complex Struct
 
 extern crate csscolorparser;
 
+use crate::cli::default_level_filter;
+
 use std::ops::{ Add, Sub, Mul};
 
 use log::LevelFilter;
+use serde::{Deserialize, Serialize};
 
 /// Main object for defining generation configuration.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub c_init:          Option<Complex>, // Initial C value for when swap_zc is used
     pub size_x:                      u32, // Sets Image Width
@@ -32,22 +35,27 @@ pub struct Config {
     pub save_method:              String, // Specifies the way the image should be saved
     pub filename:                 String, // Specifies the filename of the image
     pub math_frame:            MathFrame,
+    #[serde(skip, default = "default_level_filter")]
     pub logs:                LevelFilter,
 }
 
 /// Struct for factor & offset for math space
 /// This is used to calculate where each pixel is mapped to
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct MathFrame {
+    /// This factor is in pixel space. (Offset in x axis)
     pub factor_x: f64,
+    /// This factor is in pixel space. (Offset in y axis)
     pub factor_y: f64,
 
+    /// This offset is in math space. (Offset in x axis)
     pub offset_x: f64,
+    /// This offset is in math space. (Offset in y axis)
     pub offset_y: f64,
 }
 
 // Sets up Complex Struct
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Complex {
     pub real: f64,
     pub imaginary: f64,

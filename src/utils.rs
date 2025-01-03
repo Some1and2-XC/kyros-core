@@ -17,9 +17,13 @@ use vulkano::image::{Image, ImageCreateInfo, ImageType, ImageUsage};
 use vulkano::memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator};
 use vulkano::pipeline::{Pipeline, PipelineBindPoint};
 use vulkano::sync::{self, GpuFuture};
+use vulkano::VulkanError;
 
 use super::*;
 use std::error::Error;
+use std::fs::File;
+use std::io::BufWriter;
+use std::path::Path;
 use std::str;
 use std::sync::Arc;
 use crate::gpu::run_glsl;
@@ -60,8 +64,7 @@ pub fn cpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     let color_profile = get_profile(&config);
 
     // Initializes Image Buffer
-    // let mut img = ImageBuffer::new(config.size_x, config.size_y);
-    let mut img: Vec<u8> = Vec::with_capacity((config.size_x * config.size_y) as usize);
+    let mut img: Vec<u8> = Vec::with_capacity(4 * (config.size_x * config.size_y) as usize);
 
     // Goes through each pixel
     for i in 0..config.size_y {
@@ -246,53 +249,73 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
     let buf_length = config.size_x as u64 * config.size_y as u64 * 4;
 
-    let data_buffer: Subbuffer<[u8]> = buffer_allocator
-        .allocate_unsized(buf_length)?;
-
-    let queue = queues.next().unwrap();
-
     let layout = &pipeline.layout().set_layouts();
 
     // Here we setup the descriptor sets.
     let image_desc_set = PersistentDescriptorSet::new(
         &descriptor_set_allocator,
         layout[0].clone(),
-        [
-            WriteDescriptorSet::image_view(0, view.clone()),
-        ],
+        [WriteDescriptorSet::image_view(0, view.clone())],
         [],
         )?;
 
-    let queue_family_index = device.active_queue_family_indices().first().unwrap().clone();
+    let queue = queues.next().unwrap();
+    let queue_family_index = device.active_queue_family_indices().first().ok_or(VulkanError::InitializationFailed)?.clone();
 
-    let mut builder = AutoCommandBufferBuilder::primary(
-            &command_buffer_allocator,
-            queue_family_index,
-            CommandBufferUsage::MultipleSubmit,
-        )?;
+    let generation_count = {
+        let chunk_size = config.chunk_sizes.unwrap_or((config.size_x * config.size_y) as u64);
+        ((config.size_x * config.size_y) as u64).div_ceil(chunk_size)
+    };
 
-    builder
-        .bind_pipeline_compute(pipeline.clone())?
-        .bind_descriptor_sets(
-            PipelineBindPoint::Compute,
-            pipeline.layout().clone(),
-            0,
-            image_desc_set,
-        )?
-        .push_constants(pipeline.layout().clone(), 0, GPUConfig::default())?
-        .dispatch([config.size_x / 16, config.size_y / 16, 1])?
-        .copy_image_to_buffer(CopyImageToBufferInfo::image_buffer(
-            image.clone(),
-            data_buffer.clone(),
-        ))?;
+    let filename = format!("{}.png", config.filename);
+    let path = Path::new(&filename);
+    let file = File::create(path).expect(&format!("Failed to create file..? Filename: `{}`", config.filename));
+    let ref mut w = BufWriter::new(file);
 
-    let command_buffer = builder.build()?;
-    let future = sync::now(device)
-        .then_execute(queue, command_buffer)?
-        .then_signal_fence_and_flush()?;
-    future.wait(None)?;
+    let mut encoder = png::Encoder::new(w, config.size_x, config.size_y);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let config_information = serde_json::to_string_pretty(&config).unwrap_or("FAILED TO SERIALIZE CONFIG! (Serde Error)".to_string());
+    println!("{}", config_information);
+    encoder.add_ztxt_chunk("kyros_config".to_string(), config_information)?;
 
-    let data_buffer_content = data_buffer.read()?;
+    let mut data_buffer_content = Vec::new();
+
+    for _i in 0..generation_count {
+
+        let data_buffer: Subbuffer<[u8]> = buffer_allocator
+            .allocate_unsized(buf_length)?;
+
+        let mut builder = AutoCommandBufferBuilder::primary(
+                &command_buffer_allocator,
+                queue_family_index,
+                CommandBufferUsage::MultipleSubmit,
+            )?;
+
+        builder
+            .bind_pipeline_compute(pipeline.clone())?
+            .bind_descriptor_sets(
+                PipelineBindPoint::Compute,
+                pipeline.layout().clone(),
+                0,
+                image_desc_set.clone(),
+            )?
+            .push_constants(pipeline.layout().clone(), 0, GPUConfig::default())?
+            .dispatch([config.size_x / 16, config.size_y / 16, 1])?
+            .copy_image_to_buffer(CopyImageToBufferInfo::image_buffer(
+                image.clone(),
+                data_buffer.clone(),
+            ))?;
+
+        let command_buffer = builder.build()?;
+        let future = sync::now(device.clone())
+            .then_execute(queue.clone(), command_buffer)?
+            .then_signal_fence_and_flush()?;
+        future.wait(None)?;
+
+        data_buffer_content = data_buffer.read()?.to_vec();
+    }
+
     log::info!("{:.2?}: Finished GPU Execution", now.elapsed());
 
     let save_method = save::get_save_method(config.save_method.as_str());
