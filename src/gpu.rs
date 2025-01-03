@@ -41,7 +41,7 @@ use vulkano::{
     }, sync::{
         self,
         GpuFuture
-    }, VulkanLibrary
+    }, VulkanError, VulkanLibrary
 };
 
 use std::sync::Arc;
@@ -133,8 +133,7 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
             ..Default::default()
         },
         // InstanceCreateInfo::application_from_cargo_toml(),
-    )
-    .unwrap();
+    )?;
 
     let device_extensions = DeviceExtensions {
         khr_storage_buffer_storage_class: true,
@@ -143,8 +142,7 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
 
     // Getting the Device
     let (physical_device, queue_family_index) = instance
-        .enumerate_physical_devices()
-        .unwrap()
+        .enumerate_physical_devices()?
         .filter(|p| p.supported_extensions().contains(&device_extensions))
         .filter_map(|p| {
             p.queue_family_properties()
@@ -160,7 +158,7 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
             PhysicalDeviceType::Other => 4,
             _ => 5,
         })
-        .unwrap();
+        .ok_or(Box::new(VulkanError::InitializationFailed))?;
 
     log::info!(
         "{:.2?}: Detected Device: {} (Type: {:?})",
@@ -170,7 +168,7 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
     );
 
     if !physical_device.supported_features().contains(&MINIMAL_FEATURES) {
-        panic!("Physical device has insufficient features for this application.");
+        return Err(Box::new(VulkanError::FeatureNotPresent));
     }
 
     let (device, mut queues) = Device::new(
@@ -183,10 +181,9 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
             }],
             ..Default::default()
         }
-    )
-    .unwrap();
+    )?;
 
-    let queue = queues.next().unwrap();
+    let queue = queues.next().ok_or(Box::new(VulkanError::InitializationFailed))?;
 
     let entry_point = "main";
 
@@ -201,14 +198,14 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
                         entry_point)
                         .as_binary(),
                 ),
-            ).unwrap()
+            )?
         }
     };
 
     let pipeline = {
 
         let stage = PipelineShaderStageCreateInfo::new(
-            cs.entry_point(entry_point).unwrap()
+            cs.entry_point(entry_point).ok_or(Box::new(VulkanError::ValidationFailed))?
             );
 
         let layout = PipelineLayout::new(device.clone(), PipelineLayoutCreateInfo {
@@ -236,7 +233,7 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
                         ..Default::default()
                     }).into())].into(),
                     ..Default::default()
-                }).unwrap(),
+                })?,
             ],
             push_constant_ranges: vec![
                 PushConstantRange {
@@ -246,13 +243,13 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
                 }
             ],
             ..Default::default()
-        }).unwrap();
+        })?;
 
         ComputePipeline::new(
             device.clone(),
             None,
             ComputePipelineCreateInfo::stage_layout(stage, layout),
-        ).unwrap()
+        )?
     };
     log::info!("{:.2?}: Compiled Shaders", now.elapsed());
 
@@ -281,7 +278,7 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
             memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
             ..Default::default()
         },
-    ).unwrap();
+    )?;
 
     let _config_buffer = Buffer::new_sized::<GPUConfig>(memory_allocator.clone(),
         BufferCreateInfo {
@@ -289,9 +286,9 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
             ..Default::default()
         },
         AllocationCreateInfo::default()
-    ).unwrap();
+    )?;
 
-    let view = ImageView::new_default(image.clone()).unwrap();
+    let view = ImageView::new_default(image.clone())?;
 
     let buffer_allocator = SubbufferAllocator::new(
         memory_allocator.clone(),
@@ -306,9 +303,7 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
     );
 
     let data_buffer: Subbuffer<[u8]> = buffer_allocator
-        .allocate_unsized(buf_length)
-        .expect("Unable to allocate '{buf_length}'!")
-        ;
+        .allocate_unsized(buf_length)?;
 
     let layout = &pipeline.layout().set_layouts();
 
@@ -320,42 +315,36 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
             WriteDescriptorSet::image_view(0, view.clone()),
         ],
         [],
-        ).unwrap();
+        )?;
 
     let mut builder = AutoCommandBufferBuilder::primary(
             &command_buffer_allocator,
             queue_family_index,
-            CommandBufferUsage::OneTimeSubmit,
-        ).unwrap();
+            CommandBufferUsage::MultipleSubmit,
+        )?;
 
     builder
-        .bind_pipeline_compute(pipeline.clone())
-        .unwrap()
+        .bind_pipeline_compute(pipeline.clone())?
         .bind_descriptor_sets(
             PipelineBindPoint::Compute,
             pipeline.layout().clone(),
             0,
             image_desc_set,
-        ).unwrap()
-        .push_constants(pipeline.layout().clone(), 0, GPUConfig::default())
-        .unwrap()
-        .dispatch([image_height / 16, image_width / 16, 1])
-        .unwrap()
+        )?
+        .push_constants(pipeline.layout().clone(), 0, GPUConfig::default())?
+        .dispatch([image_height / 16, image_width / 16, 1])?
         .copy_image_to_buffer(CopyImageToBufferInfo::image_buffer(
             image.clone(),
             data_buffer.clone(),
-        )).unwrap()
-        ;
+        ))?;
 
-    let command_buffer = builder.build().unwrap();
+    let command_buffer = builder.build()?;
     let future = sync::now(device)
-        .then_execute(queue, command_buffer)
-        .unwrap()
-        .then_signal_fence_and_flush()
-        .unwrap();
-    future.wait(None).unwrap();
+        .then_execute(queue, command_buffer)?
+        .then_signal_fence_and_flush()?;
+    future.wait(None)?;
 
-    let data_buffer_content = data_buffer.read().unwrap();
+    let data_buffer_content = data_buffer.read()?;
     log::info!("{:.2?}: Finished GPU Execution", now.elapsed());
 
     return save_method.method(&data_buffer_content[..], config);

@@ -11,7 +11,7 @@ use std::ops::{ Add, Sub, Mul};
 
 use log::LevelFilter;
 
-/// Main object for defining generation configuration. 
+/// Main object for defining generation configuration.
 #[derive(Debug)]
 pub struct Config {
     pub c_init:          Option<Complex>, // Initial C value for when swap_zc is used
@@ -43,26 +43,26 @@ pub struct MathFrame {
     pub factor_y: f64,
 
     pub offset_x: f64,
-    pub offset_y: f64,   
+    pub offset_y: f64,
 }
 
 // Sets up Complex Struct
 #[derive(Debug, Clone, Copy)]
 pub struct Complex {
-	pub real: f64,
-	pub imaginary: f64,
+    pub real: f64,
+    pub imaginary: f64,
 }
 
 // Sets up Addition rules for Complex Numbers
 impl Add for Complex {
-	type Output = Complex;
+    type Output = Complex;
 
-	fn add(self, other: Complex) -> Complex {
-		Complex {
-			real : self.real + other.real,
-			imaginary : self.imaginary + other.imaginary,
-		}
-	}
+    fn add(self, other: Complex) -> Complex {
+        Complex {
+            real : self.real + other.real,
+            imaginary : self.imaginary + other.imaginary,
+        }
+    }
 }
 
 impl Sub for Complex {
@@ -78,19 +78,19 @@ impl Sub for Complex {
 
 // Sets up Multiplication rules for Complex Numbers
 impl Mul for Complex {
-	type Output = Complex;
+    type Output = Complex;
 
-	fn mul(self, other: Complex) -> Complex {
-		Complex {
-			real : self.real * other.real - self.imaginary * other.imaginary,
-			imaginary : self.real * other.imaginary + self.imaginary * other.real,
-		}
-	}
+    fn mul(self, other: Complex) -> Complex {
+        Complex {
+            real : self.real * other.real - self.imaginary * other.imaginary,
+            imaginary : self.real * other.imaginary + self.imaginary * other.real,
+        }
+    }
 }
 
 impl Complex {
-	// Sets up Comparison rules for Complex Numbers
-	pub fn is_greater(self, other: f64) -> bool {
-		(self.real * self.real + self.imaginary * self.imaginary) > (other * other)
-	}
+    // Sets up Comparison rules for Complex Numbers
+    pub fn is_greater(self, other: f64) -> bool {
+        (self.real * self.real + self.imaginary * self.imaginary) > (other * other)
+    }
 }
