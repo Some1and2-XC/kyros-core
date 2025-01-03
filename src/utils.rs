@@ -5,10 +5,23 @@
 extern crate minijinja;
 
 use minijinja::{context, Environment};
+use vulkano::buffer::allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo};
+use vulkano::buffer::{BufferContents, BufferUsage, Subbuffer};
+use vulkano::command_buffer::allocator::StandardCommandBufferAllocator;
+use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, CopyImageToBufferInfo};
+use vulkano::descriptor_set::allocator::StandardDescriptorSetAllocator;
+use vulkano::descriptor_set::{PersistentDescriptorSet, WriteDescriptorSet};
+use vulkano::format::Format;
+use vulkano::image::view::ImageView;
+use vulkano::image::{Image, ImageCreateInfo, ImageType, ImageUsage};
+use vulkano::memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator};
+use vulkano::pipeline::{Pipeline, PipelineBindPoint};
+use vulkano::sync::{self, GpuFuture};
 
 use super::*;
 use std::error::Error;
 use std::str;
+use std::sync::Arc;
 use crate::gpu::run_glsl;
 use crate::colors::profiles::get_profile;
 use log;
@@ -112,6 +125,13 @@ static TEMPLATE: &str = include_str!(
     concat!(env!("CARGO_MANIFEST_DIR"), "/comp.glsl")
 );
 
+/// A test struct to see if I can get some data in the GPU
+#[derive(Clone, Copy, BufferContents, Default)]
+#[repr(C)]
+pub struct GPUConfig {
+    n1: u32,
+}
+
 pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
     /// Takes a Vec<f64> and returns a string that looks like 1.00000, 2.00000, 3.00000
@@ -178,5 +198,105 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     };
 
     log::debug!("{}", compiled_shader);
-    return run_glsl(compiled_shader, config);
+
+    let now = Instant::now();
+
+    let (device, pipeline, mut queues) = run_glsl(&now, compiled_shader)?;
+
+    let memory_allocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
+
+    let descriptor_set_allocator = Arc::new(StandardDescriptorSetAllocator::new(
+        device.clone(),
+        Default::default(),
+    ));
+
+    let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
+        device.clone(),
+        Default::default(),
+    ));
+
+    let image = Image::new(
+        memory_allocator.clone(),
+        ImageCreateInfo {
+            image_type: ImageType::Dim2d,
+            format: Format::R8G8B8A8_UNORM,
+            extent: [config.size_x, config.size_y, 1],
+            usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
+            ..Default::default()
+        },
+    )?;
+
+    let view = ImageView::new_default(image.clone())?;
+
+    let buffer_allocator = SubbufferAllocator::new(
+        memory_allocator.clone(),
+        SubbufferAllocatorCreateInfo {
+            buffer_usage: BufferUsage::TRANSFER_DST,
+            memory_type_filter: MemoryTypeFilter::PREFER_HOST
+                | MemoryTypeFilter::HOST_RANDOM_ACCESS
+                | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE
+                ,
+            ..Default::default()
+        },
+    );
+
+    let buf_length = config.size_x as u64 * config.size_y as u64 * 4;
+
+    let data_buffer: Subbuffer<[u8]> = buffer_allocator
+        .allocate_unsized(buf_length)?;
+
+    let queue = queues.next().unwrap();
+
+    let layout = &pipeline.layout().set_layouts();
+
+    // Here we setup the descriptor sets.
+    let image_desc_set = PersistentDescriptorSet::new(
+        &descriptor_set_allocator,
+        layout[0].clone(),
+        [
+            WriteDescriptorSet::image_view(0, view.clone()),
+        ],
+        [],
+        )?;
+
+    let queue_family_index = device.active_queue_family_indices().first().unwrap().clone();
+
+    let mut builder = AutoCommandBufferBuilder::primary(
+            &command_buffer_allocator,
+            queue_family_index,
+            CommandBufferUsage::MultipleSubmit,
+        )?;
+
+    builder
+        .bind_pipeline_compute(pipeline.clone())?
+        .bind_descriptor_sets(
+            PipelineBindPoint::Compute,
+            pipeline.layout().clone(),
+            0,
+            image_desc_set,
+        )?
+        .push_constants(pipeline.layout().clone(), 0, GPUConfig::default())?
+        .dispatch([config.size_x / 16, config.size_y / 16, 1])?
+        .copy_image_to_buffer(CopyImageToBufferInfo::image_buffer(
+            image.clone(),
+            data_buffer.clone(),
+        ))?;
+
+    let command_buffer = builder.build()?;
+    let future = sync::now(device)
+        .then_execute(queue, command_buffer)?
+        .then_signal_fence_and_flush()?;
+    future.wait(None)?;
+
+    let data_buffer_content = data_buffer.read()?;
+    log::info!("{:.2?}: Finished GPU Execution", now.elapsed());
+
+    let save_method = save::get_save_method(config.save_method.as_str());
+
+    return save_method.method(&data_buffer_content[..], config);
+
 }

@@ -2,6 +2,8 @@ extern crate vulkano;
 extern crate image;
 extern crate shaderc;
 
+use crate::utils::GPUConfig;
+
 use ahash::HashMapExt;
 use shaderc::CompilationArtifact;
 use core::panic;
@@ -10,55 +12,25 @@ use std::{
 };
 
 use vulkano::{
-    buffer::{
-        allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo}, Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer
-    }, command_buffer::{
-        allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage, CopyImageToBufferInfo
-    }, descriptor_set::{
-        allocator::StandardDescriptorSetAllocator, layout::{DescriptorSetLayout, DescriptorSetLayoutCreateFlags, DescriptorSetLayoutCreateInfo, DescriptorType}, persistent::PersistentDescriptorSet, WriteDescriptorSet
-    }, device::{
-        physical::PhysicalDeviceType,
-        Device,
-        DeviceCreateInfo,
-        DeviceExtensions,
-        Features,
-        QueueCreateInfo,
-        QueueFlags,
-    }, format::Format, image::{
-        view::ImageView, Image, ImageCreateInfo, ImageType, ImageUsage
+    descriptor_set::layout::{DescriptorSetLayout, DescriptorSetLayoutCreateFlags, DescriptorSetLayoutCreateInfo, DescriptorType}, device::{
+        physical::PhysicalDeviceType, Device, DeviceCreateInfo, DeviceExtensions, Features, Queue, QueueCreateInfo, QueueFlags
     }, instance::{
         Instance,
         InstanceCreateFlags,
         InstanceCreateInfo,
-    }, memory::allocator::{
-        AllocationCreateInfo,
-        MemoryTypeFilter,
-        StandardMemoryAllocator,
     }, pipeline::{
-        compute::ComputePipelineCreateInfo, layout::{PipelineLayoutCreateFlags, PipelineLayoutCreateInfo, PushConstantRange}, ComputePipeline, Pipeline, PipelineBindPoint, PipelineLayout, PipelineShaderStageCreateInfo
+        compute::ComputePipelineCreateInfo, layout::{PipelineLayoutCreateFlags, PipelineLayoutCreateInfo, PushConstantRange}, ComputePipeline, PipelineLayout, PipelineShaderStageCreateInfo
     }, shader::{
         DescriptorBindingRequirements, DescriptorRequirements, ShaderModule, ShaderModuleCreateInfo, ShaderStages
-    }, sync::{
-        self,
-        GpuFuture
     }, VulkanError, VulkanLibrary
 };
 
 use std::sync::Arc;
 
-use crate::{save, structs::Config};
-
 const MINIMAL_FEATURES: Features = Features {
     geometry_shader: true,
     ..Features::empty()
 };
-
-/// A test struct to see if I can get some data in the GPU
-#[derive(Clone, Copy, BufferContents, Default)]
-#[repr(C)]
-struct GPUConfig {
-    n1: u32,
-}
 
 fn compile_to_spirv(glsl: String, kind: shaderc::ShaderKind, entry_point_name: &str) -> CompilationArtifact {
 
@@ -107,16 +79,7 @@ fn compile_to_spirv(glsl: String, kind: shaderc::ShaderKind, entry_point_name: &
     }
 }
 
-pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
-
-    let save_method = save::get_save_method(config.save_method.as_str());
-
-    let image_width = config.size_x;
-    let image_height = config.size_y;
-
-    let buf_length = image_height as u64 * image_width as u64 * 4;
-
-    let now = Instant::now();
+pub fn run_glsl(now: &Instant, glsl: String) -> Result<(Arc<Device>, Arc<ComputePipeline>, impl ExactSizeIterator<Item = Arc<Queue>>), Box<dyn Error>> {
 
     // Boilerplate Initialization
     let library = match VulkanLibrary::new() {
@@ -171,7 +134,7 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
         return Err(Box::new(VulkanError::FeatureNotPresent));
     }
 
-    let (device, mut queues) = Device::new(
+    let (device, queues) = Device::new(
         physical_device,
         DeviceCreateInfo {
             enabled_extensions: device_extensions,
@@ -182,8 +145,6 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
             ..Default::default()
         }
     )?;
-
-    let queue = queues.next().ok_or(Box::new(VulkanError::InitializationFailed))?;
 
     let entry_point = "main";
 
@@ -251,101 +212,9 @@ pub fn run_glsl(glsl: String, config: &Config) -> Result<(), Box<dyn Error>> {
             ComputePipelineCreateInfo::stage_layout(stage, layout),
         )?
     };
+
     log::info!("{:.2?}: Compiled Shaders", now.elapsed());
 
-    let memory_allocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
+    return Ok((device, pipeline, queues));
 
-    let descriptor_set_allocator = Arc::new(StandardDescriptorSetAllocator::new(
-        device.clone(),
-        Default::default(),
-    ));
-
-    let command_buffer_allocator = Arc::new(StandardCommandBufferAllocator::new(
-        device.clone(),
-        Default::default(),
-    ));
-
-    let image = Image::new(
-        memory_allocator.clone(),
-        ImageCreateInfo {
-            image_type: ImageType::Dim2d,
-            format: Format::R8G8B8A8_UNORM,
-            extent: [image_width, image_height, 1],
-            usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC,
-            ..Default::default()
-        },
-        AllocationCreateInfo {
-            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE,
-            ..Default::default()
-        },
-    )?;
-
-    let _config_buffer = Buffer::new_sized::<GPUConfig>(memory_allocator.clone(),
-        BufferCreateInfo {
-            usage: BufferUsage::TRANSFER_SRC | BufferUsage::UNIFORM_BUFFER,
-            ..Default::default()
-        },
-        AllocationCreateInfo::default()
-    )?;
-
-    let view = ImageView::new_default(image.clone())?;
-
-    let buffer_allocator = SubbufferAllocator::new(
-        memory_allocator.clone(),
-        SubbufferAllocatorCreateInfo {
-            buffer_usage: BufferUsage::TRANSFER_DST,
-            memory_type_filter: MemoryTypeFilter::PREFER_HOST
-                | MemoryTypeFilter::HOST_RANDOM_ACCESS
-                | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE
-                ,
-            ..Default::default()
-        },
-    );
-
-    let data_buffer: Subbuffer<[u8]> = buffer_allocator
-        .allocate_unsized(buf_length)?;
-
-    let layout = &pipeline.layout().set_layouts();
-
-    // Here we setup the descriptor sets.
-    let image_desc_set = PersistentDescriptorSet::new(
-        &descriptor_set_allocator,
-        layout[0].clone(),
-        [
-            WriteDescriptorSet::image_view(0, view.clone()),
-        ],
-        [],
-        )?;
-
-    let mut builder = AutoCommandBufferBuilder::primary(
-            &command_buffer_allocator,
-            queue_family_index,
-            CommandBufferUsage::MultipleSubmit,
-        )?;
-
-    builder
-        .bind_pipeline_compute(pipeline.clone())?
-        .bind_descriptor_sets(
-            PipelineBindPoint::Compute,
-            pipeline.layout().clone(),
-            0,
-            image_desc_set,
-        )?
-        .push_constants(pipeline.layout().clone(), 0, GPUConfig::default())?
-        .dispatch([image_height / 16, image_width / 16, 1])?
-        .copy_image_to_buffer(CopyImageToBufferInfo::image_buffer(
-            image.clone(),
-            data_buffer.clone(),
-        ))?;
-
-    let command_buffer = builder.build()?;
-    let future = sync::now(device)
-        .then_execute(queue, command_buffer)?
-        .then_signal_fence_and_flush()?;
-    future.wait(None)?;
-
-    let data_buffer_content = data_buffer.read()?;
-    log::info!("{:.2?}: Finished GPU Execution", now.elapsed());
-
-    return save_method.method(&data_buffer_content[..], config);
 }
