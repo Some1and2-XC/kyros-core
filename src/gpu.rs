@@ -2,7 +2,7 @@ extern crate vulkano;
 extern crate image;
 extern crate shaderc;
 
-use crate::utils::GPUConfig;
+use crate::structs::MathFrame;
 
 use ahash::HashMapExt;
 use shaderc::CompilationArtifact;
@@ -65,7 +65,7 @@ fn compile_to_spirv(glsl: String, kind: shaderc::ShaderKind, entry_point_name: &
                 for (i, line) in lines.iter().enumerate() {
                     println!(
                         "{}{} {}",
-                        " ".repeat(max_str_length - i.to_string().len()),
+                        " ".repeat(max_str_length - (i + 1).to_string().len()),
                         i + 1,
                         line,
                     );
@@ -200,7 +200,7 @@ pub fn run_glsl(now: &Instant, glsl: String) -> Result<(Arc<Device>, Arc<Compute
                 PushConstantRange {
                     stages: ShaderStages::COMPUTE,
                     offset: 0,
-                    size: std::mem::size_of::<GPUConfig>() as u32,
+                    size: std::mem::size_of::<MathFrame>() as u32,
                 }
             ],
             ..Default::default()

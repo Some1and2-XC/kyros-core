@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.4.6", features = ["derive", "string"] }
-# wasm-bindgen = "0.2.87"
 hsv = "0.1.1"
 image = "0.24.6"
 time = "0.3.22"
@@ -20,9 +19,16 @@ log = "0.4.21"
 bytemuck = "1.21.0"
 ahash = "0.8.11"
 vulkano-shaders = "0.34.0"
-png = "0.17.16"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"
+bitflags = "2.6.0"
+crc32fast = "1.4.2"
+# png = "0.17.16"
+png = { version = "0.17.16", path = "../image-png" }
+flate2 = { version = "1.0.35", features = ["zlib"] }
+
+[dev-dependencies]
+byteorder = "1.5.0"
 
 # [lib]
 # crate-type=["cdylib"]

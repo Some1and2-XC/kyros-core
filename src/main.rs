@@ -31,7 +31,7 @@ use crate::save::get_save_method;
 use std::env;
 use std::time::Instant;
 
-use log::{Level, Metadata, Record};
+use log::{warn, Level, Metadata, Record};
 
 // External Crates
 use clap::Parser;
@@ -94,10 +94,10 @@ fn main() {
         compression_threads: cli_args.compression_threads,
 
         math_frame: MathFrame {
-            factor_x: cli_args.factor_x / (cli_args.pixels as f64 - 1.0),
-            factor_y: cli_args.factor_y / (cli_args.pixels as f64 - 1.0),
-            offset_x: cli_args.offset_x,
-            offset_y: cli_args.offset_y,
+            factor_x: (cli_args.factor_x / (cli_args.pixels as f64 - 1.0)) as f32,
+            factor_y: (cli_args.factor_y / (cli_args.pixels as f64 - 1.0)) as f32,
+            offset_x: cli_args.offset_x as f32,
+            offset_y: cli_args.offset_y as f32,
         },
         logs: cli_args.logs,
     };
@@ -106,8 +106,8 @@ fn main() {
 
     if cli_args.julia {
         config.c_init = Some(Complex {
-            real: cli_args.c_real,
-            imaginary: cli_args.c_imaginary,
+            real: cli_args.c_real as f32,
+            imaginary: cli_args.c_imaginary as f32,
         });
     }
 
@@ -117,10 +117,14 @@ fn main() {
     // generated)
 
     // Runs Config
-    let _ = match config.gpu {
+    let res = match config.gpu {
         true => utils::gpu_eval(&config),
         false => utils::cpu_eval(&config),
     };
+
+    if let Err(e) = res {
+        warn!("Error Occurred in function evaluation: {:?}", e);
+    }
 
     // Show Completion Message
     log::info!("[Finished in {:.2?}]", now.elapsed());

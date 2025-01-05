@@ -9,7 +9,6 @@ Author : Mark T
 
 use clap::Parser;
 use log::LevelFilter;
-use serde::{Deserialize, Serialize};
 
 static ABOUT_CLI_ARGS: &str = "
  ~ Kyros

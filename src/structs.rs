@@ -13,6 +13,7 @@ use std::ops::{ Add, Sub, Mul};
 
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
+use vulkano::buffer::BufferContents;
 
 /// Main object for defining generation configuration.
 #[derive(Debug, Serialize, Deserialize)]
@@ -41,24 +42,25 @@ pub struct Config {
 
 /// Struct for factor & offset for math space
 /// This is used to calculate where each pixel is mapped to
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, BufferContents)]
+#[repr(C)]
 pub struct MathFrame {
     /// This factor is in pixel space. (Offset in x axis)
-    pub factor_x: f64,
+    pub factor_x: f32,
     /// This factor is in pixel space. (Offset in y axis)
-    pub factor_y: f64,
+    pub factor_y: f32,
 
     /// This offset is in math space. (Offset in x axis)
-    pub offset_x: f64,
+    pub offset_x: f32,
     /// This offset is in math space. (Offset in y axis)
-    pub offset_y: f64,
+    pub offset_y: f32,
 }
 
 // Sets up Complex Struct
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Complex {
-    pub real: f64,
-    pub imaginary: f64,
+    pub real: f32,
+    pub imaginary: f32,
 }
 
 // Sets up Addition rules for Complex Numbers
@@ -98,7 +100,7 @@ impl Mul for Complex {
 
 impl Complex {
     // Sets up Comparison rules for Complex Numbers
-    pub fn is_greater(self, other: f64) -> bool {
+    pub fn is_greater(self, other: f32) -> bool {
         (self.real * self.real + self.imaginary * self.imaginary) > (other * other)
     }
 }

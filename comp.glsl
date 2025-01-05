@@ -5,8 +5,11 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 layout(set = 0, binding = 0, rgba8) uniform writeonly image2D Data;
 
 layout(push_constant) uniform Params {
-    int in_n1;
-};
+    float factor_x;
+    float factor_y;
+    float offset_x;
+    float offset_y;
+} params;
 
 vec3 hsv_to_rgb (vec3 c) {
     vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
@@ -52,9 +55,10 @@ Complex mult(Complex n1, Complex n2) {
 }
 
 void main() {
+
     vec2 cords = (gl_GlobalInvocationID.xy + vec2(0.5)) / vec2(imageSize(Data));
     Complex c = Complex(vec2({{ c_init }}));
-    Complex z = Complex((cords - vec2(0.5)) * 4.0);
+    Complex z = Complex(cords * vec2(params.factor_x, params.factor_y) + vec2(params.offset_x, params.offset_y));
 
     {{ julia_changes }}
 
