@@ -5,6 +5,7 @@ extern crate shaderc;
 use crate::structs::MathFrame;
 
 use ahash::HashMapExt;
+use log::info;
 use shaderc::CompilationArtifact;
 use core::panic;
 use std::{

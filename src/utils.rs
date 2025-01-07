@@ -4,8 +4,7 @@
 
 extern crate minijinja;
 
-use flate2::write::ZlibEncoder;
-use flate2::{Compression, FlushCompress};
+use flate2::{Compress, Compression, FlushCompress, Status};
 use minijinja::{context, Environment};
 use png::chunk::IDAT;
 use png::Filter;
@@ -26,7 +25,7 @@ use vulkano::VulkanError;
 use super::*;
 use std::error::Error;
 use std::fs::File;
-use std::io::{BufWriter, Cursor, Read, Write};
+use std::io::BufWriter;
 use std::path::Path;
 use std::str;
 use std::sync::Arc;
@@ -233,7 +232,7 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     let queue_family_index = device.active_queue_family_indices().first().ok_or(VulkanError::InitializationFailed)?.clone();
 
     // Gets the amount of lines per chunk
-    let mut amnt_of_lines_per_chunk = config.chunk_sizes.unwrap_or((config.size_x * config.size_y) as u64) / (config.size_x as u64);
+    let mut amnt_of_lines_per_chunk = config.chunk_size.unwrap_or((config.size_x * config.size_y) as u64) / (config.size_x as u64);
     let original_amnt_of_lines_per_chunk = amnt_of_lines_per_chunk;
     // Gets the amount of chunks to generate
     let generation_count = (config.size_y as u64).div_ceil(amnt_of_lines_per_chunk);
@@ -255,7 +254,6 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     encoder.add_ztxt_chunk("kyros_config".to_string(), config_information)?;
     encoder.set_compression(png::Compression::High);
     encoder.set_filter(Filter::NoFilter);
-    // encoder.set_compression(Compression::Best); // This is for the official image
     let mut writer = encoder.write_header()?;
 
     // Value of the amount of bytes in the buffer.
@@ -280,6 +278,8 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         },
     )?;
 
+    println!("Image Extent: {:?}", image.extent());
+
     let view = ImageView::new_default(image.clone())?;
 
     // Here we setup the descriptor sets.
@@ -299,17 +299,22 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
     let original_factor_y = current_math_frame.factor_y;
 
-    let mut compressor = ZlibEncoder::new(Cursor::new(Vec::new()), Compression::best());
-    // This is set to buf_length even though with compression this just almost always be less.
-    let mut compressed_output = Vec::with_capacity(buf_length);
+    let mut compressor = Compress::new(Compression::new(config.compression as u32), true);
+    let mut push_chunk = vec![0u8; (config.chunk_size.unwrap_or(config.size_x as u64 * config.size_y as u64) / 2) as usize]; // we spit the output into chunks
+    let mut starting_byte = 0; // the bytes that the compression starts at
+    let mut ending_byte; // the byte that the compression finishes at
 
     for i in 0..generation_count {
+
+        // Sets compression flush flag
+        let compression;
+        if i != generation_count - 1 { compression = FlushCompress::Full; }
+        else { compression = FlushCompress::Finish; }
 
         if i == generation_count - 1 && i != 0 {
             // We can reassign becaues this should be the last iteration
             amnt_of_lines_per_chunk = config.size_y as u64 - (amnt_of_lines_per_chunk * i);
             buf_length = (amnt_of_lines_per_chunk * config.size_x as u64 * 4) as usize;
-            debug!("Writing Partial image fragment!");
         }
 
         current_math_frame.factor_y = original_factor_y * amnt_of_lines_per_chunk as f32 / config.size_y as f32;
@@ -320,10 +325,8 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         let mut builder = AutoCommandBufferBuilder::primary(
                 &command_buffer_allocator,
                 queue_family_index,
-                CommandBufferUsage::MultipleSubmit,
+                CommandBufferUsage::OneTimeSubmit,
             )?;
-
-        println!("Math Frame: {:?}", current_math_frame);
 
         builder
             .bind_pipeline_compute(pipeline.clone())?
@@ -351,47 +354,35 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
             let (values, _) = read_values.split_at(buf_length);
             let mut out_data = Vec::with_capacity(buf_length as usize + config.size_x as usize);
 
-            for chunk in values.chunks(config.size_x as usize) {
+            for chunk in values.chunks(4 * config.size_x as usize) {
 
                 let mut vec_chunk = chunk.to_vec();
+
                 out_data.push(0u8);
                 out_data.append(&mut vec_chunk);
 
             }
 
-            println!("Out Data: {:?}", out_data);
-            println!("Vec_Chunk size: {}", values.len());
-
             out_data
-
 
         };
 
-        // info!("Passed Buffer Data: {:?}", data_buffer_content);
-        info!("Passed Buffer Size: {}", data_buffer_content.len());
-        info!("Expected: {}", buf_length + config.size_x as usize);
+        let status = compressor.compress(&mut data_buffer_content, &mut push_chunk, compression)?;
+        if status == Status::BufError {
+            panic!("Buffer Writer Error Occured!");
+        }
 
-        let bytes_written = compressor.write(&compressed_output)?;
-        info!("Compressed Buffer with {} bytes written", bytes_written);
+        ending_byte = compressor.total_out();
+        let (data, _) = push_chunk.split_at((ending_byte - starting_byte) as usize);
 
-        let _ = compressor.flush()?;
-        let _bytes_read = compressor.read(&mut compressed_output)?;
-        // info!("Compressed Buffer with {} bytes read", bytes_read);
+        writer.write_chunk(IDAT, &data)?;
 
-        writer.write_chunk(IDAT, &compressed_output)?;
-        compressed_output.clear();
-        // writer.write_image_data(&data_buffer_content)?;
+        starting_byte = ending_byte;
 
         current_math_frame.offset_y += original_factor_y * amnt_of_lines_per_chunk as f32 / config.size_y as f32;
 
     }
 
-    debug!("Remaining data (from cursor): {:?}", compressor.flush_finish()?);
-
-    // writer.write_chunk(IDAT, &curs.into_inner())?;
-
-
-    info!("Validating Data...");
     writer.finish()?;
 
     log::info!("{:.2?}: Finished GPU Execution", now.elapsed());
@@ -402,3 +393,4 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     // return save_method.method(&data_buffer_content[..], config);
 
 }
+

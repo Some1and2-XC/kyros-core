@@ -31,8 +31,9 @@ pub struct Config {
     pub travel_distance:            bool, // Specifies if the output color value should be based on travel distance
     pub rgba:                       bool, // Specifies if the image should be rgba or not
     pub gpu:                        bool, // Specifies if image should be generated on the GPU
-    pub chunk_sizes:         Option<u64>, // Specifies the amount of pixels per chunk (width x height)
+    pub chunk_size:          Option<u64>, // Specifies the amount of pixels per chunk (width x height)
     pub compression_threads:       usize, // Specifies the amount of threads used for compression (with gpu gen)
+    pub compression:                 u32, // Specifies the amount of compression to apply to the image.
     pub save_method:              String, // Specifies the way the image should be saved
     pub filename:                 String, // Specifies the filename of the image
     pub math_frame:            MathFrame,

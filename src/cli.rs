@@ -140,11 +140,15 @@ pub struct Args {
     /// The size of the generated PNG chunks. If the intent is to only generate one chunk, this
     /// should not be set.
     #[arg(long, value_name="Option<INT>")]
-    pub chunk_sizes: Option<u64>,
+    pub chunk_size: Option<u64>,
 
     /// Sets the amount of threads to use for compression while using GPU generation.
     #[arg(long, default_value_t=1, value_name="INT")]
     pub compression_threads: usize,
+
+    /// Sets the compression value (higher -> more compression). Values should be between 0 and 9.
+    #[arg(long, default_value_t=9, value_name="INT")]
+    pub compression: u32,
 
     /// Sets the verbosity of logs
     #[arg(long, default_value_t=default_level_filter(), value_name="LevelFilter", value_parser=clap_enum_variants!(LevelFilter))]

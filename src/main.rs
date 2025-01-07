@@ -90,8 +90,9 @@ fn main() {
 
         rgba: cli_args.rgba | cli_args.gpu, // forces rgba if using gpu
         gpu: cli_args.gpu,
-        chunk_sizes: cli_args.chunk_sizes,
+        chunk_size: cli_args.chunk_size,
         compression_threads: cli_args.compression_threads,
+        compression: cli_args.compression,
 
         math_frame: MathFrame {
             factor_x: (cli_args.factor_x / (cli_args.pixels as f64 - 1.0)) as f32,
