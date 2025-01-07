@@ -176,6 +176,7 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         // Big mess that passes all the values to the Jinja template
         compute_shader.render(context!(
             formula => generator_function.gpu_method(),
+            width => config.size_x,
             travel_distance => format!("{:?}", config.travel_distance),
             rate_of_color_change => format!("{:.1}", config.rate_of_color_change),
             background => get_arr_str_with_len(config.background.to_array().into(), 4).unwrap(),
@@ -374,10 +375,10 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
         ending_byte = compressor.total_out();
         let (data, _) = push_chunk.split_at((ending_byte - starting_byte) as usize);
-
         writer.write_chunk(IDAT, &data)?;
-
         starting_byte = ending_byte;
+
+        info!("Wrote Chunk at byte: {}", ending_byte);
 
         current_math_frame.offset_y += original_factor_y * amnt_of_lines_per_chunk as f32 / config.size_y as f32;
 

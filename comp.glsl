@@ -56,7 +56,14 @@ Complex mult(Complex n1, Complex n2) {
 
 void main() {
 
-    vec2 cords = (gl_GlobalInvocationID.xy + vec2(0.5)) / vec2(imageSize(Data));
+    uint width = {{ width }};
+    vec2 image_size = vec2(imageSize(Data));
+
+    uint global_count = gl_GlobalInvocationID.y * uint(image_size.x) + gl_GlobalInvocationID.x;
+    uint global_y = global_count / width;
+    uint global_x = global_count - global_y * width;
+
+    vec2 cords = (vec2(global_x, global_y) + vec2(0.5)) / image_size;
     Complex c = Complex(vec2({{ c_init }}));
     Complex z = Complex(cords * vec2(params.factor_x, params.factor_y) + vec2(params.offset_x, params.offset_y));
 
