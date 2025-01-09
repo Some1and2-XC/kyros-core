@@ -2,10 +2,9 @@ extern crate vulkano;
 extern crate image;
 extern crate shaderc;
 
-use crate::structs::MathFrame;
+use crate::structs::PushConstants;
 
 use ahash::HashMapExt;
-use log::info;
 use shaderc::CompilationArtifact;
 use core::panic;
 use std::{
@@ -201,7 +200,7 @@ pub fn run_glsl(now: &Instant, glsl: String) -> Result<(Arc<Device>, Arc<Compute
                 PushConstantRange {
                     stages: ShaderStages::COMPUTE,
                     offset: 0,
-                    size: std::mem::size_of::<MathFrame>() as u32,
+                    size: std::mem::size_of::<PushConstants>() as u32,
                 }
             ],
             ..Default::default()

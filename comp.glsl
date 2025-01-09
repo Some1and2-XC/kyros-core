@@ -5,29 +5,30 @@ layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 layout(set = 0, binding = 0, rgba8) uniform writeonly image2D Data;
 
 layout(push_constant) uniform Params {
-    float factor_x;
-    float factor_y;
-    float offset_x;
-    float offset_y;
+    highp float factor_x;
+    highp float factor_y;
+    highp float offset_x;
+    highp float offset_y;
+    highp uint amnt_of_lines;
 } params;
 
-vec3 hsv_to_rgb (vec3 c) {
+vec3 hsv_to_rgb(vec3 c) {
     vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
     vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
 // From colors.rs
-float colors (float n) {
+float colors(float n) {
     {{ colors }}
 }
 
 // From shadows.rs
-float shadows (float n) {
+float shadows(float n) {
     {{ shadows }}
 }
 
-int from_decimal (float n) {
+int from_decimal(float n) {
     return int(mod(n, 1) * 255);
 }
 
@@ -56,14 +57,21 @@ Complex mult(Complex n1, Complex n2) {
 
 void main() {
 
-    uint width = {{ width }};
-    vec2 image_size = vec2(imageSize(Data));
+    highp ivec2 global_dimensions = ivec2({{ width }}, params.amnt_of_lines); // global size
+    highp ivec2 local_dimensions = ivec2(imageSize(Data)); // local size
 
-    uint global_count = gl_GlobalInvocationID.y * uint(image_size.x) + gl_GlobalInvocationID.x;
-    uint global_y = global_count / width;
-    uint global_x = global_count - global_y * width;
+    // Basically 1-dimensionalizes the image
+    highp uint global_count = gl_GlobalInvocationID.y * uint(local_dimensions.x) + gl_GlobalInvocationID.x;
+    highp uint global_y = global_count / uint(global_dimensions.x);
+    highp uint global_x = global_count - global_y * uint(global_dimensions.x);
 
-    vec2 cords = (vec2(global_x, global_y) + vec2(0.5)) / image_size;
+    highp vec2 cords = vec2(global_x, global_y) / vec2(global_dimensions);
+
+    /*
+    write_data(vec4(cords.x, cords.y, 0, 255));
+    return;
+    */
+
     Complex c = Complex(vec2({{ c_init }}));
     Complex z = Complex(cords * vec2(params.factor_x, params.factor_y) + vec2(params.offset_x, params.offset_y));
 

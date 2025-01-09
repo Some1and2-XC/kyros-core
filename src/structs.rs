@@ -31,7 +31,7 @@ pub struct Config {
     pub travel_distance:            bool, // Specifies if the output color value should be based on travel distance
     pub rgba:                       bool, // Specifies if the image should be rgba or not
     pub gpu:                        bool, // Specifies if image should be generated on the GPU
-    pub chunk_size:          Option<u64>, // Specifies the amount of pixels per chunk (width x height)
+    pub chunk_size:                  u64, // Specifies the amount of pixels per chunk (width x height)
     pub compression_threads:       usize, // Specifies the amount of threads used for compression (with gpu gen)
     pub compression:                 u32, // Specifies the amount of compression to apply to the image.
     pub save_method:              String, // Specifies the way the image should be saved
@@ -43,7 +43,7 @@ pub struct Config {
 
 /// Struct for factor & offset for math space
 /// This is used to calculate where each pixel is mapped to
-#[derive(Debug, Clone, Default, Serialize, Deserialize, BufferContents)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[repr(C)]
 pub struct MathFrame {
     /// This factor is in pixel space. (Offset in x axis)
@@ -55,6 +55,31 @@ pub struct MathFrame {
     pub offset_x: f32,
     /// This offset is in math space. (Offset in y axis)
     pub offset_y: f32,
+
+}
+
+/// Struct for handling push constants.
+/// This is generally used to calculate where each pixel is mapped to.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, BufferContents)]
+#[repr(C)]
+pub struct PushConstants {
+    /// This factor is in math space. (Offset in x axis)
+    pub factor_x: f32,
+    /// This factor is in math space. (Offset in y axis)
+    pub factor_y: f32,
+
+    /// This offset is in math space. (Offset in x axis)
+    pub offset_x: f32,
+    /// This offset is in math space. (Offset in y axis)
+    pub offset_y: f32,
+
+    /// Amount of lines to generate (in pixel space)
+    pub amnt_of_lines: u32,
+
+    // /// This refers to which line of the image the chunk is
+    // /// meant to start on.
+    // pub starting_line: u32,
+
 }
 
 // Sets up Complex Struct

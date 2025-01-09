@@ -9,7 +9,7 @@ use clap::CommandFactory;
 /*
 # Purpose
 This section of the code is for defining the different functions that are used
-to generate images. This is the function that gets run on each pixel. 
+to generate images. This is the function that gets run on each pixel.
 */
 
 pub trait Formula {
@@ -17,6 +17,23 @@ pub trait Formula {
     fn get_description(&self) -> String;
     fn method(&self, c: structs::Complex, z: structs::Complex) -> structs::Complex;
     fn gpu_method(&self) -> String;
+}
+
+struct DBG {}
+impl Formula for DBG {
+    fn get_alias(&self) -> String { "DBG".into() }
+    fn get_description(&self) -> String { "A Debug Formula for development Purposes.".into() }
+    fn method(&self, c: structs::Complex, mut z: structs::Complex) -> structs::Complex {
+        z.real += 0.1;
+        z
+
+    }
+    fn gpu_method(&self) -> String {
+        "
+            z.data.x += 0.1;
+            z.data.y += 0.1;
+        ".trim().into()
+    }
 }
 
 struct SD {}
@@ -130,6 +147,7 @@ pub fn get_formula(formula: &str) -> &dyn Formula {
         &ABR {},
         &BS  {},
         &SYM {},
+        &DBG {},
     ];
 
     // Tries to find function in FORMULAS const

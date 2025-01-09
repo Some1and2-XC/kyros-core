@@ -26,6 +26,7 @@ crc32fast = "1.4.2"
 # png = "0.17.16"
 png = { version = "0.17.16", path = "../image-png" }
 flate2 = { version = "1.0.35", features = ["zlib", "zlib-ng"] }
+tokio = { version = "1.42.0", features = ["full"] }
 
 [dev-dependencies]
 byteorder = "1.5.0"

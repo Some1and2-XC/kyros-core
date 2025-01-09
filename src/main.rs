@@ -56,7 +56,8 @@ impl log::Log for Logger {
 
 
 /// Main function of the program
-fn main() {
+#[tokio::main]
+async fn main() {
 
     log::set_logger(&LOGGER).unwrap();
 
@@ -90,7 +91,7 @@ fn main() {
 
         rgba: cli_args.rgba | cli_args.gpu, // forces rgba if using gpu
         gpu: cli_args.gpu,
-        chunk_size: cli_args.chunk_size,
+        chunk_size: cli_args.chunk_size.unwrap_or(cli_args.pixels as u64),
         compression_threads: cli_args.compression_threads,
         compression: cli_args.compression,
 
@@ -119,7 +120,7 @@ fn main() {
 
     // Runs Config
     let res = match config.gpu {
-        true => utils::gpu_eval(&config),
+        true => utils::gpu_eval(&config).await,
         false => utils::cpu_eval(&config),
     };
 

@@ -8,6 +8,7 @@ use flate2::{Compress, Compression, FlushCompress, Status};
 use minijinja::{context, Environment};
 use png::chunk::IDAT;
 use png::Filter;
+use structs::PushConstants;
 use vulkano::buffer::allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo};
 use vulkano::buffer::{BufferUsage, Subbuffer};
 use vulkano::command_buffer::allocator::StandardCommandBufferAllocator;
@@ -131,7 +132,7 @@ static TEMPLATE: &str = include_str!(
     concat!(env!("CARGO_MANIFEST_DIR"), "/comp.glsl")
 );
 
-pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
+pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
     /// Takes a Vec<f64> and returns a string that looks like 1.00000, 2.00000, 3.00000
     /// Returns Option<None> if the result isn't the expected length
@@ -177,6 +178,7 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         compute_shader.render(context!(
             formula => generator_function.gpu_method(),
             width => config.size_x,
+            height => config.size_y,
             travel_distance => format!("{:?}", config.travel_distance),
             rate_of_color_change => format!("{:.1}", config.rate_of_color_change),
             background => get_arr_str_with_len(config.background.to_array().into(), 4).unwrap(),
@@ -233,8 +235,7 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     let queue_family_index = device.active_queue_family_indices().first().ok_or(VulkanError::InitializationFailed)?.clone();
 
     // Gets the amount of lines per chunk
-    let mut amnt_of_lines_per_chunk = config.chunk_size.unwrap_or((config.size_x * config.size_y) as u64) / (config.size_x as u64);
-    let original_amnt_of_lines_per_chunk = amnt_of_lines_per_chunk;
+    let mut amnt_of_lines_per_chunk = config.chunk_size.pow(2) / config.size_x as u64;
     // Gets the amount of chunks to generate
     let generation_count = (config.size_y as u64).div_ceil(amnt_of_lines_per_chunk);
 
@@ -259,8 +260,8 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
     // Value of the amount of bytes in the buffer.
     // MUST be recalculated if `amnt_of_lines_per_chunk` changes.
-    let mut buf_length = (amnt_of_lines_per_chunk * config.size_x as u64 * 4) as usize;
-    let original_buf_length = buf_length;
+    let mut buf_length = (config.size_x as u64 * amnt_of_lines_per_chunk * 4) as usize;
+    let image_buf_length = config.chunk_size.pow(2) * 4;
 
     let mut data_buffer_content;
 
@@ -269,7 +270,7 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         ImageCreateInfo {
             image_type: ImageType::Dim2d,
             format: Format::R8G8B8A8_UNORM,
-            extent: [config.size_x, original_amnt_of_lines_per_chunk as u32, 1],
+            extent: [config.chunk_size as u32, config.chunk_size as u32, 1],
             usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC,
             ..Default::default()
         },
@@ -291,21 +292,30 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         [],
         )?;
 
-    let mut current_math_frame = MathFrame {
+    let mut push_constants = PushConstants {
         factor_x: config.math_frame.factor_x * config.size_x as f32,
         factor_y: config.math_frame.factor_y * config.size_y as f32,
         offset_x: config.math_frame.offset_x,
         offset_y: config.math_frame.offset_y,
+        amnt_of_lines: amnt_of_lines_per_chunk as u32,
     };
 
-    let original_factor_y = current_math_frame.factor_y;
+    let original_factor_y = push_constants.factor_y;
 
     let mut compressor = Compress::new(Compression::new(config.compression as u32), true);
-    let mut push_chunk = vec![0u8; (config.chunk_size.unwrap_or(config.size_x as u64 * config.size_y as u64) / 2) as usize]; // we spit the output into chunks
+    let mut push_chunk = vec![0u8; (config.chunk_size.pow(2) * 4) as usize]; // we spit the output into chunks
     let mut starting_byte = 0; // the bytes that the compression starts at
     let mut ending_byte; // the byte that the compression finishes at
 
+    info!("Generating {} chunks...", generation_count);
+
+    let mut prev_time = now;
+
     for i in 0..generation_count {
+
+        push_constants.factor_y = original_factor_y * amnt_of_lines_per_chunk as f32 / config.size_y as f32;
+
+        println!("Chunk #{} -> {:?}", i, push_constants);
 
         // Sets compression flush flag
         let compression;
@@ -315,13 +325,11 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         if i == generation_count - 1 && i != 0 {
             // We can reassign becaues this should be the last iteration
             amnt_of_lines_per_chunk = config.size_y as u64 - (amnt_of_lines_per_chunk * i);
-            buf_length = (amnt_of_lines_per_chunk * config.size_x as u64 * 4) as usize;
+            buf_length = (config.size_x as u64 * amnt_of_lines_per_chunk * 4) as usize;
         }
 
-        current_math_frame.factor_y = original_factor_y * amnt_of_lines_per_chunk as f32 / config.size_y as f32;
-
         let data_buffer: Subbuffer<[u8]> = buffer_allocator
-            .allocate_unsized(original_buf_length as u64)?;
+            .allocate_unsized(image_buf_length)?;
 
         let mut builder = AutoCommandBufferBuilder::primary(
                 &command_buffer_allocator,
@@ -337,8 +345,8 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
                 0,
                 image_desc_set.clone(),
             )?
-            .push_constants(pipeline.layout().clone(), 0, current_math_frame.clone())?
-            .dispatch([config.size_x / 16, original_amnt_of_lines_per_chunk as u32 / 16, 1])?
+            .push_constants(pipeline.layout().clone(), 0, push_constants.clone())?
+            .dispatch([config.chunk_size as u32 / 16, config.chunk_size as u32 / 16, 1])?
             .copy_image_to_buffer(CopyImageToBufferInfo::image_buffer(
                 image.clone(),
                 data_buffer.clone(),
@@ -353,14 +361,24 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         data_buffer_content = {
             let read_values = data_buffer.read()?;
             let (values, _) = read_values.split_at(buf_length);
-            let mut out_data = Vec::with_capacity(buf_length as usize + config.size_x as usize);
+            let mut out_data = Vec::with_capacity(buf_length as usize + amnt_of_lines_per_chunk as usize);
 
-            for chunk in values.chunks(4 * config.size_x as usize) {
+            let chunk_size = config.size_x as usize * 4;
+            let mut i = 0;
+
+            for chunk in values.chunks(chunk_size) {
+
+                if i >= amnt_of_lines_per_chunk {
+                    info!("Had to break because of line count?");
+                    break;
+                }
 
                 let mut vec_chunk = chunk.to_vec();
 
                 out_data.push(0u8);
                 out_data.append(&mut vec_chunk);
+
+                i += 1;
 
             }
 
@@ -378,20 +396,20 @@ pub fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         writer.write_chunk(IDAT, &data)?;
         starting_byte = ending_byte;
 
-        info!("Wrote Chunk at byte: {}", ending_byte);
+        println!(" >-- Time: {}ms <-> Wrote Chunk at byte: {} <-> Chunk: {} --<\r", prev_time.elapsed().as_millis(), ending_byte, i);
+        prev_time = Instant::now();
 
-        current_math_frame.offset_y += original_factor_y * amnt_of_lines_per_chunk as f32 / config.size_y as f32;
+        push_constants.offset_y += original_factor_y * amnt_of_lines_per_chunk as f32 / config.size_y as f32;
 
     }
+
+    println!();
 
     writer.finish()?;
 
     log::info!("{:.2?}: Finished GPU Execution", now.elapsed());
 
     return Ok(());
-
-    // let save_method = save::get_save_method(config.save_method.as_str());
-    // return save_method.method(&data_buffer_content[..], config);
 
 }
 
