@@ -23,7 +23,7 @@ struct DBG {}
 impl Formula for DBG {
     fn get_alias(&self) -> String { "DBG".into() }
     fn get_description(&self) -> String { "A Debug Formula for development Purposes.".into() }
-    fn method(&self, c: structs::Complex, mut z: structs::Complex) -> structs::Complex {
+    fn method(&self, _c: structs::Complex, mut z: structs::Complex) -> structs::Complex {
         z.real += 0.1;
         z
 
