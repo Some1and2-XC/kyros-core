@@ -311,6 +311,11 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
     info!("Generating {} chunks...", generation_count);
 
+    let dispatch_size = config.chunk_size.div_ceil(16) as u32;
+    if dispatch_size as u64 != config.chunk_size / 16 {
+        warn!("Configured chunk size ({0}x{0}) overwrites some data. This will work fine however an optimal chunk size would be a multiple of 16!", config.chunk_size);
+    }
+
     // Sets up progress bar.
     let bar_style = ProgressStyle::default_bar()
         .template(" |> {eta} {wide_bar} %{percent} ")?
@@ -352,7 +357,7 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
                 image_desc_set.clone(),
             )?
             .push_constants(pipeline.layout().clone(), 0, push_constants.clone())?
-            .dispatch([config.chunk_size as u32 / 16, config.chunk_size as u32 / 16, 1])?
+            .dispatch([dispatch_size, dispatch_size, 1])?
             .copy_image_to_buffer(CopyImageToBufferInfo::image_buffer(
                 image.clone(),
                 data_buffer.clone(),
