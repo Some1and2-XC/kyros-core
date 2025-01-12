@@ -29,12 +29,14 @@ use crate::save::get_save_method;
 
 // std imports
 use std::env;
+use std::fs::File;
 use std::time::Instant;
 
 use log::{warn, Level, Metadata, Record};
 
 // External Crates
 use clap::Parser;
+use png::Decoder;
 
 static LOGGER: Logger = Logger;
 
@@ -91,6 +93,7 @@ async fn main() {
 
         rgba: cli_args.rgba | cli_args.gpu, // forces rgba if using gpu
         gpu: cli_args.gpu,
+        read_config: cli_args.read_config,
         chunk_size: cli_args.chunk_size.unwrap_or(cli_args.pixels as u64),
         compression_threads: cli_args.compression_threads,
         compression: cli_args.compression,
@@ -103,6 +106,38 @@ async fn main() {
         },
         logs: cli_args.logs,
     };
+
+    if config.read_config {
+
+        let filename = format!("{}.png", &config.filename);
+
+        let decoder = Decoder::new(File::open(&filename).expect(&format!("Can't open file: `{}`", &filename)));
+        let meta_reader = decoder.read_info().expect("Can't parse PNG headers!");
+        let info = meta_reader.info();
+
+        let width = info.width;
+        let height = info.height;
+        let bit_depth = info.bit_depth;
+        let color_type = info.color_type;
+        let compressed_text = info.compressed_latin1_text.iter();
+        let mut compressed_config_txt = compressed_text
+            .filter(|val| &val.keyword == "kyros_config")
+            .collect::<Vec<_>>()
+            .first()
+            .expect("Can't find compressed chunk labeled `kyros_config`!")
+            .to_owned().to_owned()
+            ;
+
+        compressed_config_txt.decompress_text().expect("Can't decompress image config!");
+
+        println!("Width      : {}px", width);
+        println!("Height     : {}px", height);
+        println!("Bit Depth  : {:?}", bit_depth);
+        println!("Color Type : {:?}", color_type);
+        println!("\"kyros_config\": {}", compressed_config_txt.get_text().expect("Failed to read decompressed config!"));
+
+        return;
+    }
 
     log::set_max_level(cli_args.logs);
 

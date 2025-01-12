@@ -67,9 +67,9 @@ void main() {
 
     highp vec2 cords = vec2(global_x, global_y) / vec2(global_dimensions);
 
-    /*
     write_data(vec4(cords.x, cords.y, 0, 255));
     return;
+    /*
     */
 
     Complex c = Complex(vec2({{ c_init }}));

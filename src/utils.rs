@@ -253,11 +253,11 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     let mut encoder = png::Encoder::with_info(w, info.clone())?;
     encoder.set_color(png::ColorType::Rgba);
     encoder.set_depth(png::BitDepth::Eight);
+    encoder.set_compression(png::Compression::High);
+    encoder.set_filter(Filter::NoFilter);
     let config_information = serde_json::to_string_pretty(&config).unwrap_or("FAILED TO SERIALIZE CONFIG! (Serde Error)".to_string());
     debug!("{}", config_information);
     encoder.add_ztxt_chunk("kyros_config".to_string(), config_information)?;
-    encoder.set_compression(png::Compression::High);
-    encoder.set_filter(Filter::NoFilter);
     let mut writer = encoder.write_header()?;
 
     // Value of the amount of bytes in the buffer.
@@ -369,6 +369,8 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
             .then_signal_fence_and_flush()?;
         future.wait(None)?;
 
+        let mut tmp_data_buffer_content = Vec::new();
+
         data_buffer_content = {
             let read_values = data_buffer.read()?;
             let (values, _) = read_values.split_at(buf_length);
@@ -384,10 +386,11 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
                     break;
                 }
 
-                let mut vec_chunk = chunk.to_vec();
+                let vec_chunk = chunk.to_vec();
 
                 out_data.push(0u8);
-                out_data.append(&mut vec_chunk);
+                out_data.append(&mut vec_chunk.clone());
+                tmp_data_buffer_content.append(&mut vec_chunk.clone());
 
                 i += 1;
 
@@ -407,6 +410,20 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         ending_byte = compressor.total_out();
         let (data, _) = push_chunk.split_at((ending_byte - starting_byte) as usize);
         writer.write_chunk(IDAT, &data)?;
+
+        let mut info = png::Info::with_size(config.size_x, amnt_of_lines_per_chunk);
+        info.bit_depth = png::BitDepth::Eight;
+        info.color_type = png::ColorType::Rgba;
+
+        let mut tmp_encoder = png::Encoder::with_info(BufWriter::new(File::create(Path::new(&format!("tmp/tmp_out_#{}.png", i))).unwrap()), info.clone())?;
+        tmp_encoder.set_color(png::ColorType::Rgba);
+        tmp_encoder.set_depth(png::BitDepth::Eight);
+        tmp_encoder.set_compression(png::Compression::High);
+        tmp_encoder.set_filter(Filter::NoFilter);
+        let mut tmp_writer = tmp_encoder.write_header()?;
+        tmp_writer.write_image_data(&tmp_data_buffer_content)?;
+        tmp_writer.finish()?;
+
         starting_byte = ending_byte;
 
         let elapsed = bar.elapsed();
