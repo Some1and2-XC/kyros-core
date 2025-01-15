@@ -345,7 +345,7 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         let mut builder = AutoCommandBufferBuilder::primary(
                 &command_buffer_allocator,
                 queue_family_index,
-                CommandBufferUsage::OneTimeSubmit,
+                CommandBufferUsage::MultipleSubmit,
             )?;
 
         builder
