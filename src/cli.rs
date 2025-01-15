@@ -151,8 +151,8 @@ pub struct Args {
     pub compression: u32,
 
     /// Tries to read the config from a generated file.
-    #[arg(short, long, default_value_t=false, value_name="BOOL")]
-    pub read_config: bool,
+    #[arg(short, long, value_name="BOOL")]
+    pub read_config: Option<String>,
 
     /// Sets the verbosity of logs
     #[arg(long, default_value_t=default_level_filter(), value_name="LevelFilter", value_parser=clap_enum_variants!(LevelFilter))]

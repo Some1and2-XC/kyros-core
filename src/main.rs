@@ -107,9 +107,7 @@ async fn main() {
         logs: cli_args.logs,
     };
 
-    if config.read_config {
-
-        let filename = format!("{}.png", &config.filename);
+    if let Some(filename) = config.read_config {
 
         let decoder = Decoder::new(File::open(&filename).expect(&format!("Can't open file: `{}`", &filename)));
         let meta_reader = decoder.read_info().expect("Can't parse PNG headers!");
