@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use vulkano::buffer::BufferContents;
 
 /// Main object for defining generation configuration.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     pub c_init:          Option<Complex>, // Initial C value for when swap_zc is used
     pub size_x:                      u32, // Sets Image Width

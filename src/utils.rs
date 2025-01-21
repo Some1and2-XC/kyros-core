@@ -25,11 +25,13 @@ use vulkano::sync::{self, GpuFuture};
 use vulkano::VulkanError;
 
 use super::*;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
 use std::str;
+use std::sync::mpsc::{channel, Receiver};
 use std::sync::Arc;
 use crate::gpu::run_glsl;
 use crate::colors::profiles::get_profile;
@@ -192,7 +194,6 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
                 Some(_) => "", // Is julia settings
                 None => "c = z;", // Mandelbrot settings
             }
-
             ))
             .unwrap()
             .replace("\\n", "\n")
@@ -241,31 +242,16 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     // Gets the amount of chunks to generate
     let generation_count = (config.size_y).div_ceil(amnt_of_lines_per_chunk);
 
-    let filename = format!("{}.png", config.filename);
-    let path = Path::new(&filename);
-    let file = File::create(path).expect(&format!("Failed to create file..? Filename: `{}`", config.filename));
-    let ref mut w = BufWriter::new(file);
-
-    let mut info = png::Info::with_size(config.size_x, config.size_y);
-    info.bit_depth = png::BitDepth::Eight;
-    info.color_type = png::ColorType::Rgba;
-
-    let mut encoder = png::Encoder::with_info(w, info.clone())?;
-    encoder.set_color(png::ColorType::Rgba);
-    encoder.set_depth(png::BitDepth::Eight);
-    encoder.set_compression(png::Compression::High);
-    encoder.set_filter(Filter::NoFilter);
-    let config_information = serde_json::to_string_pretty(&config).unwrap_or("FAILED TO SERIALIZE CONFIG! (Serde Error)".to_string());
-    debug!("{}", config_information);
-    encoder.add_ztxt_chunk("kyros_config".to_string(), config_information)?;
-    let mut writer = encoder.write_header()?;
-
     // Value of the amount of bytes in the buffer.
     // MUST be recalculated if `amnt_of_lines_per_chunk` changes.
     let mut buf_length = (config.size_x * amnt_of_lines_per_chunk * 4) as usize;
     let image_buf_length = config.chunk_size.pow(2) * 4;
 
     let mut data_buffer_content;
+
+    let (tx, rx) = channel();
+
+    let write_data_thread = tokio::spawn(write_data_thread_instructions(config.clone(), amnt_of_lines_per_chunk, rx));
 
     let image = Image::new(
         memory_allocator.clone(),
@@ -409,7 +395,10 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
         ending_byte = compressor.total_out();
         let (data, _) = push_chunk.split_at((ending_byte - starting_byte) as usize);
+        /*
         writer.write_chunk(IDAT, &data)?;
+        */
+        tx.send((i as usize, data.to_vec())).expect("Failed to push to data channel");
 
         let mut info = png::Info::with_size(config.size_x, amnt_of_lines_per_chunk);
         info.bit_depth = png::BitDepth::Eight;
@@ -434,13 +423,74 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
     }
 
-    bar.finish();
+    drop(tx);
+    write_data_thread.await?;
 
-    writer.finish()?;
+    bar.finish();
 
     log::info!("{:.2?}: Finished GPU Execution", now.elapsed());
 
     return Ok(());
+
+}
+
+/// Method for running on the chunk writing thread.
+async fn write_data_thread_instructions(config: Config, amnt_of_lines_per_chunk: u32, rx: Receiver<(usize, Vec<u8>)>) -> Option<()> {
+
+    // This hashmap keeps track of the data while it gets streamed in
+    // Works as a cache for data until it gets used.
+    let mut cache_map: HashMap<usize, Option<Vec<u8>>> = HashMap::new();
+
+    // This index refers to where in the cache_map the next data chunk should be
+    let mut index = 0;
+
+    // Here we setup out file streaming
+    let filename = format!("{}.png", config.filename);
+    let path = Path::new(&filename);
+    let file = File::create(path).expect(&format!("Failed to create file..? Filename: `{}`", config.filename));
+    let ref mut w = BufWriter::new(file);
+
+    // Here we add info to the file
+    let mut info = png::Info::with_size(config.size_x, config.size_y);
+    info.bit_depth = png::BitDepth::Eight;
+    info.color_type = png::ColorType::Rgba;
+
+    // Here we setup the encoder for the image
+    let mut encoder = png::Encoder::with_info(w, info.clone()).ok()?;
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    encoder.set_compression(png::Compression::High);
+    encoder.set_filter(Filter::NoFilter);
+
+
+    let config_information = serde_json::to_string_pretty(&config).unwrap_or("FAILED TO SERIALIZE CONFIG! (Serde Error)".to_string());
+    debug!("{}", config_information);
+    encoder.add_ztxt_chunk("kyros_config".to_string(), config_information).ok()?;
+
+    // Now we write the header to file.
+    let mut writer = encoder.write_header().ok()?;
+
+    // Then we go through the amount of chunks we are going to make.
+    for _ in 0..amnt_of_lines_per_chunk {
+        // The `.recv()` method waits until either no chunks can be passed
+        let (k, v) = rx.recv().ok()?;
+        if let Some(_) = cache_map.insert(k, Some(v)) {
+            // If we already have `k` in the `cache_map` value
+            return None;
+        }
+
+        while cache_map.contains_key(&index) {
+            if let Some(data) = cache_map.get_mut(&index).take()? {
+                writer.write_chunk(IDAT, data).ok()?;
+            }
+            index += 1;
+        }
+
+    }
+
+    writer.finish().ok()?;
+
+    return Some(());
 
 }
 
