@@ -9,11 +9,10 @@ extern crate csscolorparser;
 
 use crate::cli::default_level_filter;
 
-use std::{collections::VecDeque, io::Read, ops::{ Add, Mul, Sub}, task::Poll, u64};
+use std::{ops::{ Add, Mul, Sub}, u64};
 
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
-use tokio::io::AsyncWrite;
 use vulkano::buffer::BufferContents;
 
 /// Main object for defining generation configuration.

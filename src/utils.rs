@@ -292,7 +292,7 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     }
 
     // Sets up progress bar.
-    let gpu_bar_style         = ProgressStyle::with_template("GPU Gen     |> {eta} {wide_bar} %{percent}")?;
+    let gpu_bar_style         = ProgressStyle::with_template("GPU Gen     |>    {wide_bar} %{percent}")?;
     // let gpu_bar_style         = ProgressStyle::with_template("GPU Gen     |> {eta} {wide_bar} %{percent}")?;
     let mut gpu_bar = ProgressBar::new(generation_count as u64).with_style(gpu_bar_style);
 

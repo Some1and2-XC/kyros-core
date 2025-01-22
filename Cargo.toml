@@ -30,7 +30,7 @@ indicatif = "0.17.9"
 indicatif-log-bridge = "0.2.3"
 rayon = "1.10.0"
 parking_lot = "0.12.3"
-flate2 = "1.0.35"
+flate2 = { version="1.0.35", default-features=false, features = ["zlib-ng"] }
 
 [dev-dependencies]
 byteorder = "1.5.0"
