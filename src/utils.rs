@@ -292,11 +292,11 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     }
 
     // Sets up progress bar.
-    let gpu_bar_style         = ProgressStyle::with_template("GPU Gen     |>    {wide_bar} %{percent}")?;
+    let gpu_bar_style         = ProgressStyle::with_template("GPU Gen      [Chunk {pos:>9.yellow}/{len:.red}] {bar:80.green} %{percent:3}").unwrap();
     // let gpu_bar_style         = ProgressStyle::with_template("GPU Gen     |> {eta} {wide_bar} %{percent}")?;
     let mut gpu_bar = ProgressBar::new(generation_count as u64).with_style(gpu_bar_style);
 
-    let compression_bar_style = ProgressStyle::with_template("Compression |> {eta} {wide_bar} %{percent}")?;
+    let compression_bar_style = ProgressStyle::with_template("Compression  [Chunk {pos:>9.yellow}/{len:.red}] {bar:80.green} %{percent:3}  eta: {eta:.green}  {spinner}").unwrap();
     // let compression_bar_style = ProgressStyle::with_template("Compression |> {eta} {wide_bar} %{percent}")?;
     let mut compression_bar = ProgressBar::new(generation_count as u64).with_style(compression_bar_style);
 
@@ -433,7 +433,7 @@ async fn handle_data_thread_instructions(config: Config, mut bar: ProgressBar, g
     let mut writer = encoder.write_header().ok()?;
 
     // Then we go through the amount of chunks we are going to make.
-    for i in 0..generation_count {
+    for _i in 0..generation_count {
         // The `.recv()` method waits until either no chunks can be passed
         let data = rx.recv().await?;
 
