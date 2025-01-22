@@ -9,10 +9,11 @@ extern crate csscolorparser;
 
 use crate::cli::default_level_filter;
 
-use std::ops::{ Add, Sub, Mul};
+use std::{collections::VecDeque, io::Read, ops::{ Add, Mul, Sub}, task::Poll, u64};
 
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
+use tokio::io::AsyncWrite;
 use vulkano::buffer::BufferContents;
 
 /// Main object for defining generation configuration.
@@ -32,7 +33,6 @@ pub struct Config {
     pub rgba:                       bool, // Specifies if the image should be rgba or not
     pub gpu:                        bool, // Specifies if image should be generated on the GPU
     pub chunk_size:                  u64, // Specifies the amount of pixels per chunk (width x height)
-    pub compression_threads:       usize, // Specifies the amount of threads used for compression (with gpu gen)
     pub compression:                 u32, // Specifies the amount of compression to apply to the image.
     pub read_config:      Option<String>, // Specifies if the entire program should just read the config from file.
     pub save_method:              String, // Specifies the way the image should be saved

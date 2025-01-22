@@ -4,12 +4,13 @@
 
 extern crate minijinja;
 
-use flate2::{Compress, Compression, FlushCompress, Status};
-use indicatif::{ProgressBar, ProgressStyle};
+use flate2::write::ZlibEncoder;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use minijinja::{context, Environment};
 use png::chunk::IDAT;
-use png::Filter;
+use png::{Compression, Filter};
 use structs::PushConstants;
+use tokio::sync::mpsc::{channel, Receiver};
 use vulkano::buffer::allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo};
 use vulkano::buffer::{BufferUsage, Subbuffer};
 use vulkano::command_buffer::allocator::StandardCommandBufferAllocator;
@@ -25,13 +26,11 @@ use vulkano::sync::{self, GpuFuture};
 use vulkano::VulkanError;
 
 use super::*;
-use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
-use std::io::BufWriter;
+use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::str;
-use std::sync::mpsc::{channel, Receiver};
 use std::sync::Arc;
 use crate::gpu::run_glsl;
 use crate::colors::profiles::get_profile;
@@ -245,13 +244,8 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     // Value of the amount of bytes in the buffer.
     // MUST be recalculated if `amnt_of_lines_per_chunk` changes.
     let mut buf_length = (config.size_x * amnt_of_lines_per_chunk * 4) as usize;
+    // The size of each chunk in bytes
     let image_buf_length = config.chunk_size.pow(2) * 4;
-
-    let mut data_buffer_content;
-
-    let (tx, rx) = channel();
-
-    let write_data_thread = tokio::spawn(write_data_thread_instructions(config.clone(), amnt_of_lines_per_chunk, rx));
 
     let image = Image::new(
         memory_allocator.clone(),
@@ -290,11 +284,6 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
     let original_factor_y = push_constants.factor_y;
 
-    let mut compressor = Compress::new(Compression::new(config.compression), true);
-    let mut push_chunk = vec![0u8; (config.chunk_size.pow(2) * 4) as usize]; // we spit the output into chunks
-    let mut starting_byte = 0; // the bytes that the compression starts at
-    let mut ending_byte; // the byte that the compression finishes at
-
     info!("Generating {} chunks...", generation_count);
 
     let dispatch_size = config.chunk_size.div_ceil(16) as u32;
@@ -303,21 +292,25 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     }
 
     // Sets up progress bar.
-    let bar_style = ProgressStyle::default_bar()
-        .template(" |> {eta} {wide_bar} %{percent} ")?
-        ;
-    let mut bar = ProgressBar::new(generation_count as u64)
-        .with_style(bar_style)
-        ;
+    let gpu_bar_style         = ProgressStyle::with_template("GPU Gen     |> {eta} {wide_bar} %{percent}")?;
+    // let gpu_bar_style         = ProgressStyle::with_template("GPU Gen     |> {eta} {wide_bar} %{percent}")?;
+    let mut gpu_bar = ProgressBar::new(generation_count as u64).with_style(gpu_bar_style);
+
+    let compression_bar_style = ProgressStyle::with_template("Compression |> {eta} {wide_bar} %{percent}")?;
+    // let compression_bar_style = ProgressStyle::with_template("Compression |> {eta} {wide_bar} %{percent}")?;
+    let mut compression_bar = ProgressBar::new(generation_count as u64).with_style(compression_bar_style);
+
+    let multi_bar = MultiProgress::new();
+    gpu_bar = multi_bar.add(gpu_bar);
+    compression_bar = multi_bar.add(compression_bar);
+
+    let (tx, rx) = channel(32);
+    let th_config = config.clone();
+    let handle_data_thread = tokio::spawn(handle_data_thread_instructions(th_config, compression_bar, generation_count, rx));
 
     for i in 0..generation_count {
 
         push_constants.factor_y = original_factor_y * amnt_of_lines_per_chunk as f32 / config.size_y as f32;
-
-        // Sets compression flush flag
-        let compression;
-        if i != generation_count - 1 { compression = FlushCompress::Full; }
-        else { compression = FlushCompress::Finish; }
 
         if i == generation_count - 1 && i != 0 {
             // We can reassign becaues this should be the last iteration
@@ -355,11 +348,11 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
             .then_signal_fence_and_flush()?;
         future.wait(None)?;
 
-        let mut tmp_data_buffer_content = Vec::new();
-
-        data_buffer_content = {
+        tx.send({
             let read_values = data_buffer.read()?;
             let (values, _) = read_values.split_at(buf_length);
+            // We add `amnt_of_lines_per_chunk` because png requires one
+            // filter byte per line.
             let mut out_data = Vec::with_capacity(buf_length as usize + amnt_of_lines_per_chunk as usize);
 
             let chunk_size = config.size_x as usize * 4;
@@ -375,59 +368,32 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
                 let vec_chunk = chunk.to_vec();
 
                 out_data.push(0u8);
-                out_data.append(&mut vec_chunk.clone());
-                tmp_data_buffer_content.append(&mut vec_chunk.clone());
+                out_data.extend_from_slice(&vec_chunk);
 
                 i += 1;
 
             }
 
             out_data
+        }).await.expect("Failed to send image data to compression thread!");
 
-        };
-
-        let status = compressor.compress(&mut data_buffer_content, &mut push_chunk, compression)?;
-        if status == Status::BufError {
-            panic!("Buffer Writer Error Occured!");
-        } else if status == Status::StreamEnd {
-            // info!("Writing the last buffer to image!");
-        }
-
-        ending_byte = compressor.total_out();
-        let (data, _) = push_chunk.split_at((ending_byte - starting_byte) as usize);
-        /*
-        writer.write_chunk(IDAT, &data)?;
-        */
-        tx.send((i as usize, data.to_vec())).expect("Failed to push to data channel");
-
-        let mut info = png::Info::with_size(config.size_x, amnt_of_lines_per_chunk);
-        info.bit_depth = png::BitDepth::Eight;
-        info.color_type = png::ColorType::Rgba;
-
-        let mut tmp_encoder = png::Encoder::with_info(BufWriter::new(File::create(Path::new(&format!("tmp/tmp_out_#{}.png", i))).unwrap()), info.clone())?;
-        tmp_encoder.set_color(png::ColorType::Rgba);
-        tmp_encoder.set_depth(png::BitDepth::Eight);
-        tmp_encoder.set_compression(png::Compression::High);
-        tmp_encoder.set_filter(Filter::NoFilter);
-        let mut tmp_writer = tmp_encoder.write_header()?;
-        tmp_writer.write_image_data(&tmp_data_buffer_content)?;
-        tmp_writer.finish()?;
-
-        starting_byte = ending_byte;
-
-        let elapsed = bar.elapsed();
-        bar = bar.with_elapsed(elapsed);
+        let elapsed = gpu_bar.elapsed();
+        gpu_bar = gpu_bar.with_elapsed(elapsed);
+        gpu_bar.inc(1);
 
         push_constants.offset_y += original_factor_y * amnt_of_lines_per_chunk as f32 / config.size_y as f32;
-        bar.inc(1);
 
     }
 
+    gpu_bar.finish();
+
+    // We drop the TX so you can't send data anymore
     drop(tx);
-    write_data_thread.await?;
 
-    bar.finish();
+    // We wait for the compressor
+    handle_data_thread.await?;
 
+    // We display that we finished
     log::info!("{:.2?}: Finished GPU Execution", now.elapsed());
 
     return Ok(());
@@ -435,14 +401,11 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 }
 
 /// Method for running on the chunk writing thread.
-async fn write_data_thread_instructions(config: Config, amnt_of_lines_per_chunk: u32, rx: Receiver<(usize, Vec<u8>)>) -> Option<()> {
+async fn handle_data_thread_instructions(config: Config, mut bar: ProgressBar, generation_count: u32, mut rx: Receiver<Vec<u8>>) -> Option<()> {
 
-    // This hashmap keeps track of the data while it gets streamed in
-    // Works as a cache for data until it gets used.
-    let mut cache_map: HashMap<usize, Option<Vec<u8>>> = HashMap::new();
+    info!("Started compression thread...");
 
-    // This index refers to where in the cache_map the next data chunk should be
-    let mut index = 0;
+    let mut zlib_write_buffer = ZlibEncoder::new(Vec::new(), flate2::Compression::new(9));
 
     // Here we setup out file streaming
     let filename = format!("{}.png", config.filename);
@@ -462,7 +425,6 @@ async fn write_data_thread_instructions(config: Config, amnt_of_lines_per_chunk:
     encoder.set_compression(png::Compression::High);
     encoder.set_filter(Filter::NoFilter);
 
-
     let config_information = serde_json::to_string_pretty(&config).unwrap_or("FAILED TO SERIALIZE CONFIG! (Serde Error)".to_string());
     debug!("{}", config_information);
     encoder.add_ztxt_chunk("kyros_config".to_string(), config_information).ok()?;
@@ -471,26 +433,45 @@ async fn write_data_thread_instructions(config: Config, amnt_of_lines_per_chunk:
     let mut writer = encoder.write_header().ok()?;
 
     // Then we go through the amount of chunks we are going to make.
-    for _ in 0..amnt_of_lines_per_chunk {
+    for i in 0..generation_count {
         // The `.recv()` method waits until either no chunks can be passed
-        let (k, v) = rx.recv().ok()?;
-        if let Some(_) = cache_map.insert(k, Some(v)) {
-            // If we already have `k` in the `cache_map` value
-            return None;
-        }
+        let data = rx.recv().await?;
 
-        while cache_map.contains_key(&index) {
-            if let Some(data) = cache_map.get_mut(&index).take()? {
-                writer.write_chunk(IDAT, data).ok()?;
-            }
-            index += 1;
-        }
+        // Compresses the data
+        zlib_write_buffer.write_all(&data).ok()?;
+        // Takes the data from the buffer and writes it to disk
+        let compressed_data = zlib_write_buffer.get_mut().drain(..).collect::<Vec<u8>>();
+        writer.write_chunk(IDAT, &compressed_data).ok()?;
+
+        // Here we setup stuff for writing individual chunks to disk.
+        // This is more-so for development.
+        let amnt_of_lines_per_chunk = config.chunk_size.pow(2) / config.size_x as u64;
+        let mut info = png::Info::with_size(config.size_x, amnt_of_lines_per_chunk as u32);
+        info.bit_depth = png::BitDepth::Eight;
+        info.color_type = png::ColorType::Rgba;
+
+        let mut tmp_encoder = png::Encoder::with_info(BufWriter::new(File::create(Path::new(&format!("tmp/tmp_out_#{}.png", i))).unwrap()), info.clone()).ok()?;
+        tmp_encoder.set_color(png::ColorType::Rgba);
+        tmp_encoder.set_depth(png::BitDepth::Eight);
+        tmp_encoder.set_compression(png::Compression::High);
+        tmp_encoder.set_filter(Filter::NoFilter);
+        let mut tmp_writer = tmp_encoder.write_header().ok()?;
+        tmp_writer.write_image_data(&data).ok()?;
+        tmp_writer.finish().ok()?;
+
+        let elapsed = bar.elapsed();
+        bar = bar.with_elapsed(elapsed);
+        bar.inc(1);
 
     }
 
+    zlib_write_buffer.flush().ok()?;
+    let final_chunk = zlib_write_buffer.finish().ok()?;
+    writer.write_chunk(IDAT, &final_chunk).ok()?;
     writer.finish().ok()?;
+
+    bar.finish();
 
     return Some(());
 
 }
-

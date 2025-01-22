@@ -95,7 +95,6 @@ async fn main() {
         gpu: cli_args.gpu,
         read_config: cli_args.read_config,
         chunk_size: cli_args.chunk_size.unwrap_or(cli_args.pixels as u64),
-        compression_threads: cli_args.compression_threads,
         compression: cli_args.compression,
 
         math_frame: MathFrame {

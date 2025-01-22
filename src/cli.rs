@@ -142,10 +142,6 @@ pub struct Args {
     #[arg(long, value_name="Option<INT>")]
     pub chunk_size: Option<u64>,
 
-    /// Sets the amount of threads to use for compression while using GPU generation.
-    #[arg(long, default_value_t=1, value_name="INT")]
-    pub compression_threads: usize,
-
     /// Sets the compression value (higher -> more compression). Values should be between 0 and 9.
     #[arg(long, default_value_t=9, value_name="INT")]
     pub compression: u32,
