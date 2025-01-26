@@ -4,13 +4,16 @@
 
 extern crate minijinja;
 
-use flate2::write::ZlibEncoder;
+use gzp::deflate::Zlib;
+use gzp::par::compress::{ParCompress, ParCompressBuilder};
+use gzp::ZWriter;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use minijinja::{context, Environment};
+use open_writer::OpenWriter;
 use png::chunk::IDAT;
 use png::Filter;
 use structs::PushConstants;
-use tokio::sync::mpsc::{channel, Receiver};
+use tokio::sync::mpsc::{channel, unbounded_channel, Receiver};
 use vulkano::buffer::allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo};
 use vulkano::buffer::{BufferUsage, Subbuffer};
 use vulkano::command_buffer::allocator::StandardCommandBufferAllocator;
@@ -324,7 +327,9 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
         let mut builder = AutoCommandBufferBuilder::primary(
                 &command_buffer_allocator,
                 queue_family_index,
-                CommandBufferUsage::MultipleSubmit,
+                // This is simultaneous use because of a bug that sometimes happens
+                // where the command buffer doesn't get cleared properly and can lead to crashes.
+                CommandBufferUsage::SimultaneousUse,
             )?;
 
         builder
@@ -405,7 +410,17 @@ async fn handle_data_thread_instructions(config: Config, mut bar: ProgressBar, g
 
     info!("Started compression thread...");
 
-    let mut zlib_write_buffer = ZlibEncoder::new(Vec::new(), flate2::Compression::new(9));
+    // let mut zlib_write_buffer = ZlibEncoder::new(Vec::new(), flate2::Compression::new(9));
+
+    // A channel for compressed data
+    let (comp_rx, mut comp_tx) = unbounded_channel::<Vec<u8>>();
+
+    let compressed_data_writer = OpenWriter::new(comp_rx);
+
+    let mut zlib_encoder: ParCompress<Zlib> = ParCompressBuilder::new()
+        .num_threads(18).unwrap()
+        .from_writer(compressed_data_writer)
+        ;
 
     // Here we setup out file streaming
     let filename = format!("{}.png", config.filename);
@@ -438,12 +453,21 @@ async fn handle_data_thread_instructions(config: Config, mut bar: ProgressBar, g
         let data = rx.recv().await?;
 
         // Compresses the data
-        zlib_write_buffer.write_all(&data).unwrap();
+        // zlib_write_buffer.write(&data).unwrap();
+        zlib_encoder.write_all(&data).unwrap();
         // Takes the data from the buffer and writes it to disk
-        let compressed_data = zlib_write_buffer.get_mut().drain(..).collect::<Vec<u8>>();
+        // let compressed_data = zlib_write_buffer.get_mut().drain(..).collect::<Vec<u8>>();
+        zlib_encoder.flush().unwrap();
+        let mut compressed_data: Vec<u8> = Vec::new();
+        while !comp_tx.is_empty() {
+            // This unwrap should be fine as we are checking if we have values before this happens
+            compressed_data.extend_from_slice(&comp_tx.recv().await.unwrap());
+        }
+        // let compressed_data = zlib_write_buffer.get_mut().drain(..).collect::<Vec<u8>>();
         writer.write_chunk(IDAT, &compressed_data).unwrap();
 
         // For this section to work, we need to fix the leading 0's in each scan line of the data.
+        // This is for writing check chunk to its own image.
         /*
         // Here we setup stuff for writing individual chunks to disk.
         // This is more-so for development.
@@ -468,8 +492,13 @@ async fn handle_data_thread_instructions(config: Config, mut bar: ProgressBar, g
 
     }
 
-    zlib_write_buffer.flush().unwrap();
-    let final_chunk = zlib_write_buffer.finish().unwrap();
+    zlib_encoder.finish().unwrap();
+
+    let mut final_chunk = Vec::new();
+    while let Some(comp_data) = comp_tx.recv().await {
+        final_chunk.extend_from_slice(&comp_data);
+    }
+
     writer.write_chunk(IDAT, &final_chunk).unwrap();
     writer.finish().unwrap();
 
@@ -477,4 +506,9 @@ async fn handle_data_thread_instructions(config: Config, mut bar: ProgressBar, g
 
     return Some(());
 
+}
+
+/// Method for handling compressed data and writing it to chunks on disk
+async fn handle_compressed_data_thread_instructions(mut bar: ProgressBar, mut rx: Receiver<Vec<u8>>) -> Option<()> {
+    todo!()
 }

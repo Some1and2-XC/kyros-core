@@ -21,17 +21,15 @@ ahash = "0.8.11"
 vulkano-shaders = "0.34.0"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"
-bitflags = "2.6.0"
-crc32fast = "1.4.2"
-# png = "0.17.16"
 png = { version = "0.17.16", path = "../image-png" }
 tokio = { version = "1.42.0", features = ["full"] }
 indicatif = "0.17.9"
 indicatif-log-bridge = "0.2.3"
-rayon = "1.10.0"
 parking_lot = "0.12.3"
-flate2 = { version="1.0.35", default-features=false, features = ["zlib-ng"] }
+# flate2 = { version="1.0.35", default-features=false, features = ["zlib-ng"] }
 console = "0.15.10"
+bitflags = "2.8.0"
+gzp = { version = "0.11.3", features = ["deflate_zlib_ng"] }
 
 [dev-dependencies]
 byteorder = "1.5.0"

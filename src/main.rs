@@ -18,6 +18,8 @@ mod utils;
 mod cli;
 mod save;
 mod gpu;
+mod validator;
+mod open_writer;
 
 use crate::structs::{Complex, Config, MathFrame};
 use crate::cli::Args;
