@@ -98,6 +98,7 @@ async fn main() {
         read_config: cli_args.read_config,
         chunk_size: cli_args.chunk_size.unwrap_or(cli_args.pixels as u64),
         compression: cli_args.compression,
+        compression_threads: cli_args.compression_threads,
 
         math_frame: MathFrame {
             factor_x: (cli_args.factor_x / (cli_args.pixels as f64 - 1.0)) as f32,

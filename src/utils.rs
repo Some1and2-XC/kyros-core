@@ -6,7 +6,7 @@ extern crate minijinja;
 
 use gzp::deflate::Zlib;
 use gzp::par::compress::{ParCompress, ParCompressBuilder};
-use gzp::ZWriter;
+use gzp::{Compression, ZWriter};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use minijinja::{context, Environment};
 use open_writer::OpenWriter;
@@ -410,15 +410,14 @@ async fn handle_data_thread_instructions(config: Config, mut bar: ProgressBar, g
 
     info!("Started compression thread...");
 
-    // let mut zlib_write_buffer = ZlibEncoder::new(Vec::new(), flate2::Compression::new(9));
-
     // A channel for compressed data
     let (comp_rx, mut comp_tx) = unbounded_channel::<Vec<u8>>();
 
     let compressed_data_writer = OpenWriter::new(comp_rx);
 
     let mut zlib_encoder: ParCompress<Zlib> = ParCompressBuilder::new()
-        .num_threads(18).unwrap()
+        .num_threads(config.compression_threads as usize).unwrap()
+        .compression_level(Compression::new(config.compression))
         .from_writer(compressed_data_writer)
         ;
 
@@ -453,10 +452,8 @@ async fn handle_data_thread_instructions(config: Config, mut bar: ProgressBar, g
         let data = rx.recv().await?;
 
         // Compresses the data
-        // zlib_write_buffer.write(&data).unwrap();
         zlib_encoder.write_all(&data).unwrap();
         // Takes the data from the buffer and writes it to disk
-        // let compressed_data = zlib_write_buffer.get_mut().drain(..).collect::<Vec<u8>>();
         zlib_encoder.flush().unwrap();
         let mut compressed_data: Vec<u8> = Vec::new();
         while !comp_tx.is_empty() {
@@ -465,26 +462,6 @@ async fn handle_data_thread_instructions(config: Config, mut bar: ProgressBar, g
         }
         // let compressed_data = zlib_write_buffer.get_mut().drain(..).collect::<Vec<u8>>();
         writer.write_chunk(IDAT, &compressed_data).unwrap();
-
-        // For this section to work, we need to fix the leading 0's in each scan line of the data.
-        // This is for writing check chunk to its own image.
-        /*
-        // Here we setup stuff for writing individual chunks to disk.
-        // This is more-so for development.
-        let amnt_of_lines_per_chunk = config.chunk_size.pow(2) / config.size_x as u64;
-        let mut info = png::Info::with_size(config.size_x, amnt_of_lines_per_chunk as u32);
-        info.bit_depth = png::BitDepth::Eight;
-        info.color_type = png::ColorType::Rgba;
-
-        let mut tmp_encoder = png::Encoder::with_info(BufWriter::new(File::create(Path::new(&format!("tmp/tmp_out_#{}.png", i))).unwrap()), info.clone()).unwrap();
-        tmp_encoder.set_color(png::ColorType::Rgba);
-        tmp_encoder.set_depth(png::BitDepth::Eight);
-        tmp_encoder.set_compression(png::Compression::High);
-        tmp_encoder.set_filter(Filter::NoFilter);
-        let mut tmp_writer = tmp_encoder.write_header().unwrap();
-        tmp_writer.write_image_data(&data).unwrap();
-        tmp_writer.finish().unwrap();
-        */
 
         let elapsed = bar.elapsed();
         bar = bar.with_elapsed(elapsed);
@@ -506,9 +483,4 @@ async fn handle_data_thread_instructions(config: Config, mut bar: ProgressBar, g
 
     return Some(());
 
-}
-
-/// Method for handling compressed data and writing it to chunks on disk
-async fn handle_compressed_data_thread_instructions(mut bar: ProgressBar, mut rx: Receiver<Vec<u8>>) -> Option<()> {
-    todo!()
 }

@@ -146,6 +146,11 @@ pub struct Args {
     #[arg(long, default_value_t=9, value_name="INT")]
     pub compression: u32,
 
+    /// Sets the amount of threads to use in compression.
+    #[arg(long, default_value_t=4, value_name="INT")]
+    pub compression_threads: u32,
+
+
     /// Tries to read the config from a generated file.
     #[arg(short, long, value_name="BOOL")]
     pub read_config: Option<String>,

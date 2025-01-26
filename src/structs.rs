@@ -33,6 +33,7 @@ pub struct Config {
     pub gpu:                        bool, // Specifies if image should be generated on the GPU
     pub chunk_size:                  u64, // Specifies the amount of pixels per chunk (width x height)
     pub compression:                 u32, // Specifies the amount of compression to apply to the image.
+    pub compression_threads:         u32, // Specifies the amount of threads to use in compression.
     pub read_config:      Option<String>, // Specifies if the entire program should just read the config from file.
     pub save_method:              String, // Specifies the way the image should be saved
     pub filename:                 String, // Specifies the filename of the image
