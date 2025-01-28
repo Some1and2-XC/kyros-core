@@ -13,7 +13,7 @@ use open_writer::OpenWriter;
 use png::chunk::IDAT;
 use png::Filter;
 use structs::PushConstants;
-use tokio::sync::mpsc::{channel, unbounded_channel, Receiver};
+use tokio::sync::mpsc::{channel, unbounded_channel, Receiver, UnboundedReceiver};
 use vulkano::buffer::allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo};
 use vulkano::buffer::{BufferUsage, Subbuffer};
 use vulkano::command_buffer::allocator::StandardCommandBufferAllocator;
@@ -296,20 +296,22 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 
     // Sets up progress bar.
     let gpu_bar_style         = ProgressStyle::with_template("GPU Gen      [Chunk {pos:>9.yellow}/{len:.red}] {bar:80.green} %{percent:3}").unwrap();
-    // let gpu_bar_style         = ProgressStyle::with_template("GPU Gen     |> {eta} {wide_bar} %{percent}")?;
     let mut gpu_bar = ProgressBar::new(generation_count as u64).with_style(gpu_bar_style);
 
-    let compression_bar_style = ProgressStyle::with_template("Compression  [Chunk {pos:>9.yellow}/{len:.red}] {bar:80.green} %{percent:3}  eta: {eta:.green}  {spinner}").unwrap();
-    // let compression_bar_style = ProgressStyle::with_template("Compression |> {eta} {wide_bar} %{percent}")?;
+    let compression_bar_style = ProgressStyle::with_template("Compression  [Chunk {pos:>9.yellow}/{len:.red}] {bar:80.green} %{percent:3}").unwrap();
     let mut compression_bar = ProgressBar::new(generation_count as u64).with_style(compression_bar_style);
+
+    let data_write_bar_style  = ProgressStyle::with_template("Data Written [Chunk {pos:>9.yellow}/{len:.red}] {bar:80.green} %{percent:3}  eta: {eta:.green}  {spinner}").unwrap();
+    let mut data_write_bar = ProgressBar::new(generation_count as u64).with_style(data_write_bar_style);
 
     let multi_bar = MultiProgress::new();
     gpu_bar = multi_bar.add(gpu_bar);
     compression_bar = multi_bar.add(compression_bar);
+    data_write_bar = multi_bar.add(data_write_bar);
 
     let (tx, rx) = channel(1);
     let th_config = config.clone();
-    let handle_data_thread = tokio::spawn(handle_data_thread_instructions(th_config, compression_bar, generation_count, rx));
+    let handle_compression_thread = tokio::spawn(handle_compression_thread_instructions(th_config, compression_bar, data_write_bar, generation_count, rx));
 
     for i in 0..generation_count {
 
@@ -396,7 +398,7 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     drop(tx);
 
     // We wait for the compressor
-    handle_data_thread.await?;
+    handle_compression_thread.await?;
 
     // We display that we finished
     log::info!("{:.2?}: Finished GPU Execution", now.elapsed());
@@ -406,20 +408,49 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
 }
 
 /// Method for running on the chunk writing thread.
-async fn handle_data_thread_instructions(config: Config, mut bar: ProgressBar, generation_count: u32, mut rx: Receiver<Vec<u8>>) -> Option<()> {
+async fn handle_compression_thread_instructions(config: Config, mut compression_bar: ProgressBar, data_write_bar: ProgressBar, generation_count: u32, mut rx: Receiver<Vec<u8>>) -> Option<()> {
 
     info!("Started compression thread...");
 
     // A channel for compressed data
-    let (comp_rx, mut comp_tx) = unbounded_channel::<Vec<u8>>();
+    let (comp_tx, comp_rx) = unbounded_channel::<Vec<u8>>();
 
-    let compressed_data_writer = OpenWriter::new(comp_rx);
+    let handle_data_thread = tokio::spawn(handle_data_thread_instructions(config.clone(), data_write_bar, comp_rx));
+
+    let compressed_data_writer = OpenWriter::new(comp_tx);
 
     let mut zlib_encoder: ParCompress<Zlib> = ParCompressBuilder::new()
         .num_threads(config.compression_threads as usize).unwrap()
         .compression_level(Compression::new(config.compression))
         .from_writer(compressed_data_writer)
         ;
+
+    // Then we go through the amount of chunks we are going to make.
+    for _i in 0..generation_count {
+        // The `.recv()` method waits until either no chunks can be passed
+        let data = rx.recv().await?;
+
+        // Compresses the data
+        zlib_encoder.write_all(&data).unwrap();
+        // Takes the data from the buffer and writes it to disk
+        zlib_encoder.flush().unwrap();
+
+        let elapsed = compression_bar.elapsed();
+        compression_bar = compression_bar.with_elapsed(elapsed);
+        compression_bar.inc(1);
+
+    }
+
+    zlib_encoder.finish().unwrap();
+
+    compression_bar.finish();
+    handle_data_thread.await.ok()?;
+
+    return Some(());
+
+}
+
+async fn handle_data_thread_instructions(config: Config, mut data_write_bar: ProgressBar, mut rx: UnboundedReceiver<Vec<u8>>) -> Option<()> {
 
     // Here we setup out file streaming
     let filename = format!("{}.png", config.filename);
@@ -446,40 +477,29 @@ async fn handle_data_thread_instructions(config: Config, mut bar: ProgressBar, g
     // Now we write the header to file.
     let mut writer = encoder.write_header().ok()?;
 
-    // Then we go through the amount of chunks we are going to make.
-    for _i in 0..generation_count {
-        // The `.recv()` method waits until either no chunks can be passed
-        let data = rx.recv().await?;
-
-        // Compresses the data
-        zlib_encoder.write_all(&data).unwrap();
-        // Takes the data from the buffer and writes it to disk
-        zlib_encoder.flush().unwrap();
+    while !rx.is_closed() {
         let mut compressed_data: Vec<u8> = Vec::new();
-        while !comp_tx.is_empty() {
+        while !rx.is_empty() {
             // This unwrap should be fine as we are checking if we have values before this happens
-            compressed_data.extend_from_slice(&comp_tx.recv().await.unwrap());
+            compressed_data.extend_from_slice(&rx.recv().await.unwrap());
         }
-        // let compressed_data = zlib_write_buffer.get_mut().drain(..).collect::<Vec<u8>>();
         writer.write_chunk(IDAT, &compressed_data).unwrap();
 
-        let elapsed = bar.elapsed();
-        bar = bar.with_elapsed(elapsed);
-        bar.inc(1);
+        let elapsed = data_write_bar.elapsed();
+        data_write_bar = data_write_bar.with_elapsed(elapsed);
+        data_write_bar.inc(1);
 
     }
 
-    zlib_encoder.finish().unwrap();
-
     let mut final_chunk = Vec::new();
-    while let Some(comp_data) = comp_tx.recv().await {
+    while let Some(comp_data) = rx.recv().await {
         final_chunk.extend_from_slice(&comp_data);
     }
 
     writer.write_chunk(IDAT, &final_chunk).unwrap();
     writer.finish().unwrap();
 
-    bar.finish();
+    data_write_bar.finish();
 
     return Some(());
 
