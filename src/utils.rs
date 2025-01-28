@@ -414,8 +414,9 @@ async fn handle_compression_thread_instructions(config: Config, mut compression_
 
     // A channel for compressed data
     let (comp_tx, comp_rx) = unbounded_channel::<Vec<u8>>();
+    let (data_write_tx, data_write_rx) = channel::<()>(2);
 
-    let handle_data_thread = tokio::spawn(handle_data_thread_instructions(config.clone(), data_write_bar, comp_rx));
+    let handle_data_thread = tokio::spawn(handle_data_thread_instructions(config.clone(), data_write_bar, comp_rx, data_write_rx));
 
     let compressed_data_writer = OpenWriter::new(comp_tx);
 
@@ -435,6 +436,8 @@ async fn handle_compression_thread_instructions(config: Config, mut compression_
         // Takes the data from the buffer and writes it to disk
         zlib_encoder.flush().unwrap();
 
+        data_write_tx.send(()).await.unwrap();
+
         let elapsed = compression_bar.elapsed();
         compression_bar = compression_bar.with_elapsed(elapsed);
         compression_bar.inc(1);
@@ -450,7 +453,7 @@ async fn handle_compression_thread_instructions(config: Config, mut compression_
 
 }
 
-async fn handle_data_thread_instructions(config: Config, mut data_write_bar: ProgressBar, mut rx: UnboundedReceiver<Vec<u8>>) -> Option<()> {
+async fn handle_data_thread_instructions(config: Config, mut data_write_bar: ProgressBar, mut data_rx: UnboundedReceiver<Vec<u8>>, mut write_flag_rx: Receiver<()>) -> Option<()> {
 
     // Here we setup out file streaming
     let filename = format!("{}.png", config.filename);
@@ -477,11 +480,14 @@ async fn handle_data_thread_instructions(config: Config, mut data_write_bar: Pro
     // Now we write the header to file.
     let mut writer = encoder.write_header().ok()?;
 
-    while !rx.is_closed() {
+    while !data_rx.is_closed() {
+
+        write_flag_rx.recv().await;
+
         let mut compressed_data: Vec<u8> = Vec::new();
-        while !rx.is_empty() {
+        while !data_rx.is_empty() {
             // This unwrap should be fine as we are checking if we have values before this happens
-            compressed_data.extend_from_slice(&rx.recv().await.unwrap());
+            compressed_data.extend_from_slice(&data_rx.recv().await.unwrap());
         }
         writer.write_chunk(IDAT, &compressed_data).unwrap();
 
@@ -492,7 +498,7 @@ async fn handle_data_thread_instructions(config: Config, mut data_write_bar: Pro
     }
 
     let mut final_chunk = Vec::new();
-    while let Some(comp_data) = rx.recv().await {
+    while let Some(comp_data) = data_rx.recv().await {
         final_chunk.extend_from_slice(&comp_data);
     }
 
