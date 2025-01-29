@@ -1,5 +1,5 @@
 use std::io::Write;
-use tokio::sync::mpsc::{Sender, UnboundedSender};
+use tokio::sync::mpsc::UnboundedSender;
 
 /// This struct is for being a type that implements `write` while also being able to access the
 /// underlying written data as soon as its written in an async context.

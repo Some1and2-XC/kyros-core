@@ -2,11 +2,11 @@
 //! Everything in this module is written with very very large images in mind (multiple gigabytes
 //! compressed)
 
-use std::{fs::File, ops::BitAnd};
+// use std::fs::File;
 
-use bitflags::{bitflags, Flags};
+use bitflags::bitflags;
 
-use crate::structs::Config;
+// use crate::structs::Config;
 
 bitflags! {
 
@@ -23,6 +23,7 @@ bitflags! {
 
 }
 
+/*
 pub fn check_chunks(validation: ValidationLevel, config: &Config) -> std::io::Result<()> {
     let file = File::open(&config.filename)?;
 
@@ -34,3 +35,4 @@ pub fn check_chunks(validation: ValidationLevel, config: &Config) -> std::io::Re
     return Ok(());
 
 }
+*/

@@ -18,6 +18,7 @@ mod utils;
 mod cli;
 mod save;
 mod gpu;
+mod gpu_thread_utils;
 mod validator;
 mod open_writer;
 
