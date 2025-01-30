@@ -21,12 +21,11 @@ ahash = "0.8.11"
 vulkano-shaders = "0.34.0"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"
-png = { version = "0.17.16", path = "../image-png" }
+png = { git = "https://github.com/image-rs/image-png.git", rev = "e0cb9196a21c041ade1f973fb159a14c232c33bf" }
 tokio = { version = "1.42.0", features = ["full"] }
 indicatif = "0.17.9"
 indicatif-log-bridge = "0.2.3"
 parking_lot = "0.12.3"
-# flate2 = { version="1.0.35", default-features=false, features = ["zlib-ng"] }
 console = "0.15.10"
 bitflags = "2.8.0"
 gzp = { version = "0.11.3", features = ["deflate_zlib_ng"] }
