@@ -7,7 +7,7 @@ extern crate minijinja;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use minijinja::{context, Environment};
 use structs::PushConstants;
-use tokio::sync::mpsc::channel;
+use async_channel::bounded;
 use vulkano::buffer::allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo};
 use vulkano::buffer::{BufferUsage, Subbuffer};
 use vulkano::command_buffer::allocator::StandardCommandBufferAllocator;
@@ -302,7 +302,7 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     compression_bar = multi_bar.add(compression_bar);
     data_write_bar = multi_bar.add(data_write_bar);
 
-    let (tx, rx) = channel(1);
+    let (tx, rx) = bounded(1);
     let th_config = config.clone();
     let handle_compression_thread = tokio::spawn(handle_compression_thread_instructions(th_config, compression_bar, data_write_bar, generation_count, rx));
 

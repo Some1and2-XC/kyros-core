@@ -29,6 +29,7 @@ parking_lot = "0.12.3"
 console = "0.15.10"
 bitflags = "2.8.0"
 gzp = { version = "0.11.3", features = ["deflate_zlib_ng"] }
+async-channel = "2.3.1"
 
 [dev-dependencies]
 byteorder = "1.5.0"
