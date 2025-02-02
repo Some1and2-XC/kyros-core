@@ -26,7 +26,6 @@ use super::*;
 use std::error::Error;
 use std::str;
 use std::sync::Arc;
-use std::time::Instant;
 use crate::gpu::run_glsl;
 use crate::colors::profiles::get_profile;
 use log::{self, info};

@@ -9,7 +9,7 @@ extern crate csscolorparser;
 
 use crate::cli::default_level_filter;
 
-use std::{ops::{ Add, Mul, Sub}, str::FromStr, u64};
+use std::{ops::{ Add, Mul, Sub}, u64};
 
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
@@ -40,41 +40,6 @@ pub struct Config {
     pub math_frame:            MathFrame,
     #[serde(skip, default = "default_level_filter")]
     pub logs:                LevelFilter,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-
-        return Self {
-            c_init: None,
-            size_x: 512,
-            size_y: 512,
-            max_i: 1024,
-            gen_formula: "SD".to_string(),
-            color_formula: "ROTATIONAL".to_string(),
-            rate_of_color_change: 9.0,
-            background: csscolorparser::Color::from_str("transparent").unwrap(),
-            foreground: csscolorparser::Color::from_str("black").unwrap(),
-            chunk_size: 16384,
-            compression: 9,
-            compression_threads: 100,
-            filename: "out.png".to_string(),
-            gpu: true,
-            logs: default_level_filter(),
-            math_frame: MathFrame {
-                factor_x: 4.0,
-                factor_y: 4.0,
-                offset_x: -2.0,
-                offset_y: -2.0,
-            },
-            read_config: None,
-            rgba: true,
-            save_method: "MOCK".to_string(),
-            shadow_formula: "NONE".to_string(),
-            travel_distance: true,
-        };
-
-    }
 }
 
 /// Struct for factor & offset for math space

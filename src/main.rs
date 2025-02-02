@@ -5,16 +5,41 @@ Author : Mark T
   Main file for running processes
 */
 
+// External Imports
+extern crate image;
+extern crate csscolorparser;
+extern crate log;
+
+// Project Crates
+mod math;
+mod structs;
+mod colors;
+mod utils;
+mod cli;
+mod save;
+mod gpu;
+mod gpu_thread_utils;
+mod validator;
+mod open_writer;
+
+use crate::structs::{Complex, Config, MathFrame};
+use crate::cli::Args;
+
+use crate::colors::color::get_color;
+use crate::colors::shadows::get_shadow;
+use crate::math::formula::get_formula;
+use crate::save::get_save_method;
+
 // std imports
 use std::env;
 use std::fs::File;
 use std::time::Instant;
 
+use log::{warn, Level, Metadata, Record};
+
 // External Crates
 use clap::Parser;
 use png::Decoder;
-
-pub use kyros::*;
 
 static LOGGER: Logger = Logger;
 
@@ -33,6 +58,7 @@ impl log::Log for Logger {
 
     fn flush(&self) {}
 }
+
 
 /// Main function of the program
 #[tokio::main]
