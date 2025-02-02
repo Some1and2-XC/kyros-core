@@ -58,7 +58,7 @@ impl Default for Config {
             chunk_size: 16384,
             compression: 9,
             compression_threads: 100,
-            filename: "out.png".to_string(),
+            filename: "out".to_string(),
             gpu: true,
             logs: default_level_filter(),
             math_frame: MathFrame {
