@@ -103,12 +103,10 @@ pub async fn handle_data_thread_instructions(config: Config, mut data_write_bar:
 
     }
 
-    let mut final_chunk = Vec::new();
     while let Some(comp_data) = data_rx.recv().await {
-        final_chunk.extend_from_slice(&comp_data);
+        writer.write_chunk(IDAT, &comp_data).unwrap();
     }
 
-    writer.write_chunk(IDAT, &final_chunk).unwrap();
     writer.finish().unwrap();
 
     data_write_bar.finish();
