@@ -107,6 +107,16 @@ impl Save for B64 {
     }
 }
 
+struct MOCK {}
+
+impl Save for MOCK {
+    fn get_alias(&self) -> String { return "MOCK".to_string(); }
+    fn get_description(&self) -> String { return "A Save method meant to be used for testing, doesn't actually save and data.".to_string(); }
+    fn method(&self, _image_buffer: &[u8], _config: &Config) -> Result<(), Box<dyn Error>> {
+        return Ok(());
+    }
+}
+
 /// Function for getting the method for saving images from config
 pub fn get_save_method(save_method: &str) -> &dyn Save {
 
@@ -115,6 +125,7 @@ pub fn get_save_method(save_method: &str) -> &dyn Save {
         &PNG{},
         &B64{},
         &TIFF{},
+        &MOCK{},
     ];
 
     // Iterates through methods to find one that matches
