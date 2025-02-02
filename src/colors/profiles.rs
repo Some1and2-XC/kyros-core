@@ -1,7 +1,8 @@
 #[allow(unused_variables)]
 
-use super::super::*;
 use hsv;
+
+use crate::structs::Config;
 
 pub trait ColorProfile {
     fn get_foreground(&self) -> &Vec<u8>;

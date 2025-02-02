@@ -1,9 +1,10 @@
 #![allow(non_snake_case)]
 
-use super::super::*;
-
 use clap::error::ErrorKind;
 use clap::CommandFactory;
+
+use crate::structs::Config;
+use crate::cli::Args;
 
 pub trait Colors {
     fn get_alias(&self) -> String;

@@ -6,7 +6,6 @@ extern crate minijinja;
 
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use minijinja::{context, Environment};
-use structs::PushConstants;
 use tokio::sync::mpsc::channel;
 use vulkano::buffer::allocator::{SubbufferAllocator, SubbufferAllocatorCreateInfo};
 use vulkano::buffer::{BufferUsage, Subbuffer};
@@ -22,16 +21,24 @@ use vulkano::pipeline::{Pipeline, PipelineBindPoint};
 use vulkano::sync::{self, GpuFuture};
 use vulkano::VulkanError;
 
-use super::*;
+use crate::gpu::run_glsl;
+use crate::colors::profiles::get_profile;
+use crate::structs::{Complex, Config};
+use crate::colors::color::get_color;
+use crate::colors::shadows::get_shadow;
+use crate::math::formula::get_formula;
+use crate::save::get_save_method;
+use crate::structs::PushConstants;
+use crate::warn;
+use crate::Level;
+
 use std::error::Error;
 use std::str;
 use std::sync::Arc;
 use std::time::Instant;
-use crate::gpu::run_glsl;
-use crate::colors::profiles::get_profile;
 use log::{self, info};
 
-use gpu_thread_utils::handle_compression_thread_instructions;
+use crate::gpu_thread_utils::handle_compression_thread_instructions;
 
 /// Function for getting image from configuration and generator function.
 pub fn cpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
@@ -43,7 +50,7 @@ pub fn cpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     let generator_function = get_formula(&config.gen_formula.as_str());
 
     // Sets Initial 'c' Value (If set)
-    let mut c = Complex { real: 0f32, imaginary: 0f32, };
+    let mut c = Complex{ real: 0f32, imaginary: 0f32, };
     let is_julia: bool = match config.c_init {
         Some(value) => {
             c = value;

@@ -2,12 +2,13 @@ use gzp::deflate::Zlib;
 use gzp::par::compress::{ParCompress, ParCompressBuilder};
 use gzp::{Compression, ZWriter};
 use indicatif::ProgressBar;
-use open_writer::OpenWriter;
 use png::chunk::IDAT;
 use png::Filter;
 use tokio::sync::mpsc::{channel, unbounded_channel, Receiver, UnboundedReceiver};
 
-use super::*;
+use crate::structs::Config;
+use crate::open_writer::OpenWriter;
+
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;

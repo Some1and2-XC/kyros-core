@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use super::super::Args;
+use crate::cli::Args;
 
 use clap::error::ErrorKind;
 use clap::CommandFactory;
@@ -17,7 +17,7 @@ pub trait Shadows {
     fn gpu_method(&self) -> String;
 }
 
-/// Rotational Coloring function for generation. Uses HSV rotational color. 
+/// Rotational Coloring function for generation. Uses HSV rotational color.
 struct NONE {}
 impl Shadows for NONE {
     fn get_alias(&self) -> String {

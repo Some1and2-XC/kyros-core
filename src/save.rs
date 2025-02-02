@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
 
-use super::*;
+use crate::cli::Args;
+use crate::structs::Config;
 use std::ops::Deref;
 use std::io::Cursor;
 use std::error::Error;

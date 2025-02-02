@@ -16,6 +16,14 @@ use png::Decoder;
 
 pub use kyros::*;
 
+pub use kyros::structs::{Complex, Config, MathFrame};
+pub use kyros::cli::Args;
+
+pub use kyros::colors::color::get_color;
+pub use kyros::colors::shadows::get_shadow;
+pub use kyros::math::formula::get_formula;
+pub use kyros::save::get_save_method;
+
 static LOGGER: Logger = Logger;
 
 struct Logger;
@@ -130,8 +138,8 @@ async fn main() {
 
     // Runs Config
     let res = match config.gpu {
-        true => utils::gpu_eval(&config).await,
-        false => utils::cpu_eval(&config),
+        true => execution::gpu_eval(&config).await,
+        false => execution::cpu_eval(&config),
     };
 
     if let Err(e) = res {

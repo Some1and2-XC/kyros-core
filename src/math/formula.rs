@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
-use super::super::structs;
-use super::super::Args;
+use crate::structs;
+use crate::cli::Args;
 
 use clap::error::ErrorKind;
 use clap::CommandFactory;
