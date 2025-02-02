@@ -107,10 +107,10 @@ pub async fn handle_data_thread_instructions(config: Config, mut data_write_bar:
     while let Some(comp_data) = data_rx.recv().await {
         final_chunk.extend_from_slice(&comp_data);
     }
+
     if final_chunk.len() != 0 {
         writer.write_chunk(IDAT, &final_chunk).unwrap();
     }
-
     writer.finish().unwrap();
 
     data_write_bar.finish();

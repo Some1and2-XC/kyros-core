@@ -41,7 +41,6 @@ gzp = { version = "0.11.3", features = ["deflate_zlib_ng"] }
 [dev-dependencies]
 byteorder = "1.5.0"
 criterion = { version = "0.5.1", features = ["html_reports"] }
-# iai = "0.1.1" # For benchmarking machine instructions
 
 [[bench]]
 name = "generation"
