@@ -22,7 +22,7 @@ base64 = "0.21.4"
 csscolorparser = { version = "0.6.2", features = ["serde"] }
 minijinja = "1.0.21"
 vulkano = "0.34.1"
-shaderc = "0.8.3"
+shaderc = { version = "0.8.3", features = ["build-from-source"] }
 log = "0.4.21"
 bytemuck = "1.21.0"
 ahash = "0.8.11"
