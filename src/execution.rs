@@ -311,8 +311,8 @@ pub async fn gpu_eval(config: &Config) -> Result<(), Box<dyn Error>> {
     data_write_bar = multi_bar.add(data_write_bar);
 
     let (tx, rx) = channel(1);
-    let th_config = config.clone();
-    let handle_compression_thread = tokio::spawn(handle_compression_thread_instructions(th_config, compression_bar, data_write_bar, generation_count, rx));
+
+    let handle_compression_thread = tokio::spawn(handle_compression_thread_instructions(config.clone(), compression_bar, data_write_bar, generation_count, rx));
 
     for i in 0..generation_count {
 
