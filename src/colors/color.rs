@@ -13,7 +13,7 @@ pub trait Colors {
     fn gpu_method(&self) -> String;
 }
 
-struct ROTATIONAL {}
+pub struct ROTATIONAL {}
 impl Colors for ROTATIONAL {
     fn get_alias(&self) -> String { "ROTATIONAL".into() }
     fn get_description(&self) -> String { "Simple rotational color based on iteration value".into() }
@@ -23,7 +23,7 @@ impl Colors for ROTATIONAL {
     }
 }
 
-struct SINUSOIDAL {}
+pub struct SINUSOIDAL {}
 impl Colors for SINUSOIDAL {
     fn get_alias(&self) -> String { "SINUSOIDAL".into() }
     fn get_description(&self) -> String { "Sinusoidal color values generated between set values".into() }

@@ -18,7 +18,7 @@ pub trait Shadows {
 }
 
 /// Rotational Coloring function for generation. Uses HSV rotational color.
-struct NONE {}
+pub struct NONE {}
 impl Shadows for NONE {
     fn get_alias(&self) -> String {
         "NONE".into()
@@ -34,7 +34,7 @@ impl Shadows for NONE {
     }
 }
 
-struct MINIMAL {}
+pub struct MINIMAL {}
 impl Shadows for MINIMAL {
     fn get_alias(&self) -> String { "MINIMAL".into() }
     fn get_description(&self) -> String { "Adds slight variance to values based on cos wave".into() }
@@ -46,7 +46,7 @@ impl Shadows for MINIMAL {
     }
 }
 
-struct MODULUS {}
+pub struct MODULUS {}
 impl Shadows for MODULUS {
     fn get_alias(&self) -> String { "MODULUS".into() }
     fn get_description(&self) -> String { "Adds significant variance using a sawtooth wave".into() }

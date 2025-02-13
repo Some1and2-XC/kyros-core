@@ -36,7 +36,7 @@ impl Formula for DBG {
     }
 }
 
-struct SD {}
+pub struct SD {}
 impl Formula for SD {
     fn get_alias(&self) -> String { "SD".into() }
     fn get_description(&self) -> String { "Standard z = z^2 + c".into() }
@@ -50,7 +50,7 @@ impl Formula for SD {
     }
 }
 
-struct R {}
+pub struct R {}
 impl Formula for R {
     fn get_alias(&self) -> String { "R".into() }
     fn get_description(&self) -> String { "Custom Rabbit Generator".into() }
@@ -70,7 +70,7 @@ impl Formula for R {
     }
 }
 
-struct ABR {}
+pub struct ABR {}
 impl Formula for ABR {
     fn get_alias(&self) -> String { "ABR".into() }
     fn get_description(&self) -> String { "Absolute Value Rabbit Generator".into() }
@@ -97,7 +97,7 @@ impl Formula for ABR {
     }
 }
 
-struct BS {}
+pub struct BS {}
 impl Formula for BS {
     fn get_alias(&self) -> String { "BS".into() }
     fn get_description(&self) -> String { "Burning Ship Generator".into() }
@@ -119,7 +119,7 @@ impl Formula for BS {
     }
 }
 
-struct SYM {}
+pub struct SYM {}
 impl Formula for SYM {
     fn get_alias(&self) -> String { "SYM".into() }
     fn get_description(&self) -> String { "A Symetrical Mandelbrot Like Generation".into() }
